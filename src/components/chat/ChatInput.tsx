@@ -16,7 +16,8 @@ import {
 } from '@/src/store/atoms';
 import { ChatMessage } from '@/src/types';
 import { streamChat } from '@/src/lib/utils/streaming-client';
-import { WalletConnectButton } from '@/src/components/wallet/WalletConnectButton';
+
+import { PromptTemplates } from './PromptTemplates';
 
 export function ChatInput() {
   const [currentInput, setCurrentInput] = useAtom(currentInputAtom);
@@ -26,19 +27,19 @@ export function ChatInput() {
   const [messages] = useAtom(chatMessagesAtom);
   const [walletState] = useAtom(walletStateAtom);
 
-  const handleSendMessage = async () => {
-    if (!currentInput.trim() || isAIThinking) return;
+  const handleSendMessage = async (messageToSend?: string) => {
+    const messageContent = messageToSend || currentInput;
+    if (!messageContent.trim() || isAIThinking) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: currentInput,
+      content: messageContent,
       role: 'user',
       timestamp: new Date(),
     };
 
     // Add user message
     addMessage(userMessage);
-    const messageContent = currentInput;
     setCurrentInput('');
     setIsAIThinking(true);
 
@@ -134,6 +135,14 @@ export function ChatInput() {
     }
   };
 
+  const handleButtonClick = () => {
+    handleSendMessage();
+  };
+
+  const handlePromptExecute = (prompt: string) => {
+    handleSendMessage(prompt);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -142,32 +151,32 @@ export function ChatInput() {
   };
 
   return (
-    <div className="border-t p-4">
-      {/* Wallet connection area */}
-      <div className="flex justify-end mb-3">
-        <WalletConnectButton />
-      </div>
+    <div className="border-t">
+      {/* Prompt Templates - Fixed list above input */}
+      <PromptTemplates onExecutePrompt={handlePromptExecute} />
 
-      {/* Chat input area */}
-      <div className="flex space-x-2">
-        <Input
-          value={currentInput}
-          onChange={(e) => setCurrentInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            walletState.isConnected
-              ? "Ask about SUI market sentiment, trends, portfolio analysis, or trading insights..."
-              : "Ask about SUI market sentiment, trends, or trading insights (connect wallet for portfolio analysis)..."
-          }
-          disabled={isAIThinking}
-          className="flex-1"
-        />
-        <Button
-          onClick={handleSendMessage}
-          disabled={!currentInput.trim() || isAIThinking}
-        >
-          Send
-        </Button>
+      <div className="p-4">
+        {/* Chat input area */}
+        <div className="flex space-x-2">
+          <Input
+            value={currentInput}
+            onChange={(e) => setCurrentInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              walletState.isConnected
+                ? "Ask about SUI market sentiment, trends, portfolio analysis, or trading insights..."
+                : "Ask about SUI market sentiment, trends, or trading insights (connect wallet for portfolio analysis)..."
+            }
+            disabled={isAIThinking}
+            className="flex-1"
+          />
+          <Button
+            onClick={handleButtonClick}
+            disabled={!currentInput.trim() || isAIThinking}
+          >
+            Send
+          </Button>
+        </div>
       </div>
     </div>
   );

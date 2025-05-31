@@ -6,3 +6,4 @@ export { MessageBubble } from './MessageBubble';
 export { ChatInput } from './ChatInput';
 export { WelcomeScreen } from './WelcomeScreen';
 export { AIThinkingIndicator } from './AIThinkingIndicator';
+export { PromptTemplates } from './PromptTemplates';

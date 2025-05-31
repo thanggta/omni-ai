@@ -74,14 +74,6 @@ export async function POST(request: NextRequest) {
     const { action } = body;
 
     switch (action) {
-      case 'clearCache':
-        // Clear Twitter service cache
-        twitterService.clearCache();
-        return NextResponse.json({
-          success: true,
-          message: 'Twitter cache cleared successfully'
-        });
-
       case 'healthCheck':
         // Check if Twitter API is accessible
         const testResult = await twitterService.searchPosts('test', 1);
@@ -91,9 +83,17 @@ export async function POST(request: NextRequest) {
           error: testResult.error
         });
 
+      case 'realTimeStatus':
+        // Check real-time status (no cache, always fresh)
+        return NextResponse.json({
+          success: true,
+          message: 'Twitter service is running in real-time mode (no caching)',
+          timestamp: new Date().toISOString()
+        });
+
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Use: clearCache or healthCheck' },
+          { error: 'Invalid action. Use: healthCheck or realTimeStatus' },
           { status: 400 }
         );
     }

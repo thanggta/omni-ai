@@ -145,13 +145,38 @@ export interface AIResponse {
   };
 }
 
-// #TODO-5.4: Define alert and notification types
-export interface Alert {
-  // TODO: Define alert structure
+// #TODO-5.4: Define alert and notification types - IMPLEMENTED
+export interface AlertData {
+  id: string;
+  type: 'breaking_news' | 'price_alert' | 'opportunity' | 'risk_alert' | 'community_insight';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  summary: string;
+  url?: string;
+  timestamp: Date;
+  twitterPost?: TwitterPost;
+  aiAnalysis: string;
+  relevanceScore: number;
+}
+
+export interface AlertResponse {
+  success: boolean;
+  alerts: AlertData[];
+  timestamp: Date;
+  error?: string;
 }
 
 export interface NotificationSettings {
-  // TODO: Define notification preferences structure
+  enabled: boolean;
+  categories: {
+    breaking_news: boolean;
+    price_alert: boolean;
+    opportunity: boolean;
+    risk_alert: boolean;
+    community_insight: boolean;
+  };
+  severityThreshold: 'low' | 'medium' | 'high' | 'critical';
 }
 
 // #TODO-5.5: Define SUI blockchain types

@@ -79,65 +79,172 @@ export class SUIService {
     }
   }
 
-  // #TODO-14.4: Get all coin balances - IMPLEMENTED with zero balance filtering
+  // #TODO-14.4: Get all coin balances - ENHANCED with battle-tested logic from React Query hooks
   async getAllBalances(address: string): Promise<TokenBalance[]> {
     try {
-      const balances = await this.client.getAllBalances({
-        owner: address
+      // Use getAllCoins instead of getAllBalances for better coin aggregation (like React Query version)
+      const allCoins = await this.client.getAllCoins({
+        owner: address,
       });
 
-      const tokenBalances: TokenBalance[] = [];
+      // Group coins by type and sum their balances (battle-tested approach)
+      const balanceMap = new Map<string, bigint>();
 
-      for (const balance of balances) {
-        // Skip tokens with zero balance
-        const totalBalance = parseInt(balance.totalBalance);
-        if (totalBalance === 0) {
+      allCoins.data.forEach((coin) => {
+        const current = balanceMap.get(coin.coinType) || BigInt(0);
+        balanceMap.set(coin.coinType, current + BigInt(coin.balance));
+      });
+
+      // Convert to our TokenBalance format with enhanced metadata fetching
+      const tokenBalances: TokenBalance[] = [];
+      const metadataPromises: Promise<any>[] = [];
+      const coinTypes: string[] = [];
+
+      // Prepare metadata fetching for all coin types
+      for (const [coinType, balance] of balanceMap.entries()) {
+        // Skip tokens with zero balance early
+        if (balance === BigInt(0)) {
           continue;
         }
 
-        // Get coin metadata for better display
-        try {
-          const metadata = await this.client.getCoinMetadata({
-            coinType: balance.coinType
+        coinTypes.push(coinType);
+        metadataPromises.push(this.getCoinMetadataWithFallback(coinType));
+      }
+
+      // Fetch all metadata in parallel for better performance
+      const metadataResults = await Promise.allSettled(metadataPromises);
+
+      // Process each coin type with its metadata
+      for (let i = 0; i < coinTypes.length; i++) {
+        const coinType = coinTypes[i];
+        const balance = balanceMap.get(coinType)!;
+        const metadataResult = metadataResults[i];
+
+        // Extract metadata or use fallback
+        let metadata = null;
+        if (metadataResult.status === 'fulfilled') {
+          metadata = metadataResult.value;
+        }
+
+        const decimals = metadata?.decimals || 9;
+        const symbol = metadata?.symbol || this.extractSymbolFromCoinType(coinType);
+        const name = metadata?.name || symbol;
+        const iconUrl = metadata?.iconUrl || undefined;
+
+        // Format balance using proper decimals
+        const formattedBalance = this.formatTokenBalance(balance.toString(), decimals);
+
+        // Only add tokens with non-zero formatted balance
+        if (parseFloat(formattedBalance) > 0) {
+          tokenBalances.push({
+            coinType,
+            symbol,
+            name,
+            balance: formattedBalance,
+            decimals,
+            iconUrl
           });
-
-          const decimals = metadata?.decimals || 9;
-          const symbol = metadata?.symbol || 'UNKNOWN';
-          const name = metadata?.name || 'Unknown Token';
-          const iconUrl = metadata?.iconUrl || undefined;
-          const formattedBalance = (totalBalance / Math.pow(10, decimals)).toString();
-
-          // Only add tokens with non-zero formatted balance
-          if (parseFloat(formattedBalance) > 0) {
-            tokenBalances.push({
-              coinType: balance.coinType,
-              symbol,
-              name,
-              balance: formattedBalance,
-              decimals,
-              iconUrl
-            });
-          }
-        } catch (metadataError) {
-          // If metadata fetch fails, use basic info but still check for non-zero balance
-          const decimals = 9;
-          const formattedBalance = (totalBalance / Math.pow(10, decimals)).toString();
-
-          if (parseFloat(formattedBalance) > 0) {
-            tokenBalances.push({
-              coinType: balance.coinType,
-              symbol: balance.coinType.split('::').pop() || 'UNKNOWN',
-              balance: formattedBalance,
-              decimals
-            });
-          }
         }
       }
 
-      return tokenBalances;
+      // Fetch prices for all tokens using 7k.ag API pattern (like React Query version)
+      const tokensWithPrices = await this.enrichTokensWithPrices(tokenBalances);
+
+      console.log('tokensWithPrices', tokensWithPrices)
+
+      // Sort by USD value descending (like React Query version)
+      return tokensWithPrices.sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0));
+
     } catch (error) {
       console.error('Failed to get all balances:', error);
       throw new Error('Failed to fetch token balances');
+    }
+  }
+
+  // Helper method for coin metadata with fallback
+  private async getCoinMetadataWithFallback(coinType: string) {
+    try {
+      return await this.client.getCoinMetadata({ coinType });
+    } catch (error) {
+      console.warn(`Failed to fetch metadata for ${coinType}:`, error);
+      return null;
+    }
+  }
+
+  // Helper method to extract symbol from coin type (like React Query version)
+  private extractSymbolFromCoinType(coinType: string): string {
+    return coinType.split('::').pop() || 'UNKNOWN';
+  }
+
+  // Helper method to format token balance with proper decimals
+  private formatTokenBalance(balance: string, decimals: number): string {
+    const balanceBigInt = BigInt(balance);
+    const divisor = BigInt(Math.pow(10, decimals));
+    const wholePart = balanceBigInt / divisor;
+    const fractionalPart = balanceBigInt % divisor;
+
+    if (fractionalPart === BigInt(0)) {
+      return wholePart.toString();
+    }
+
+    const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+    const trimmedFractional = fractionalStr.replace(/0+$/, '');
+
+    return trimmedFractional ? `${wholePart}.${trimmedFractional}` : wholePart.toString();
+  }
+
+  // Helper method to enrich tokens with prices using 7k.ag API pattern
+  private async enrichTokensWithPrices(tokens: TokenBalance[]): Promise<TokenBalance[]> {
+    try {
+      // Use native fetch instead of axios (user preference)
+      const tokenIds = tokens.map(token => token.coinType);
+      const params = new URLSearchParams({
+        ids: tokenIds.join(','),
+      });
+
+      const response = await fetch(`https://prices.7k.ag/price?${params}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        // 10s timeout equivalent
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Price API error: ${response.status}`);
+      }
+
+      const priceData = await response.json();
+
+      // Refine data like in React Query version
+      const refinedPriceData: Record<string, { price: number; lastUpdated: number }> = {};
+      for (const [key, value] of Object.entries(priceData)) {
+        const updatedKey = key.split('::').pop() || key;
+        refinedPriceData[updatedKey] = value as { price: number; lastUpdated: number };
+      }
+
+      // Enrich tokens with price data
+      return tokens.map(token => {
+        const priceInfo = refinedPriceData[token.symbol];
+        const usdPrice = priceInfo?.price || 0;
+        const usdValue = usdPrice ? parseFloat(token.balance) * usdPrice : 0;
+
+        return {
+          ...token,
+          usdPrice,
+          usdValue
+        };
+      });
+
+    } catch (error) {
+      console.warn('Failed to fetch token prices:', error);
+      // Return tokens without price data if price fetching fails
+      return tokens.map(token => ({
+        ...token,
+        usdPrice: 0,
+        usdValue: 0
+      }));
     }
   }
 
@@ -163,87 +270,21 @@ export class SUIService {
     }
   }
 
-  // #TODO-14.6: Get full portfolio data - IMPLEMENTED with real price calculation
+  // #TODO-14.6: Get full portfolio data - SIMPLIFIED using enhanced getAllBalances
   async getPortfolio(address: string): Promise<PortfolioData> {
     try {
-      // Get all token balances (already filtered for non-zero balances)
+      // Get all token balances with prices (already includes 7k.ag price data)
       const tokens = await this.getAllBalances(address);
 
       // Get NFTs
       const nfts = await this.getNFTs(address);
 
-      // Calculate total value using real token prices
-      let totalValue = 0;
-      const tokensWithValue = [];
-
-      // Import CoinGecko service for price fetching
-      const { coinGeckoService } = await import('../services/coingecko');
-
-      // Get SUI main token price first (most common)
-      const suiToken = tokens.find(token => token.coinType === '0x2::sui::SUI');
-      if (suiToken) {
-        try {
-          const suiPrice = await coinGeckoService.getTokenMarketData('sui');
-          if (suiPrice?.current_price) {
-            const suiValue = parseFloat(suiToken.balance) * suiPrice.current_price;
-            totalValue += suiValue;
-            tokensWithValue.push({
-              ...suiToken,
-              usdPrice: suiPrice.current_price,
-              usdValue: suiValue
-            });
-          } else {
-            tokensWithValue.push({
-              ...suiToken,
-              usdPrice: 0,
-              usdValue: 0
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching SUI price:', error);
-          tokensWithValue.push({
-            ...suiToken,
-            usdPrice: 0,
-            usdValue: 0
-          });
-        }
-      }
-
-      // For other tokens, try to get prices by contract address
-      const otherTokens = tokens.filter(token => token.coinType !== '0x2::sui::SUI');
-      if (otherTokens.length > 0) {
-        try {
-          // Extract contract addresses for batch price fetching
-          const contractAddresses = otherTokens.map(token => token.coinType);
-          const tokenPrices = await coinGeckoService.getMultipleTokenPricesByContract(contractAddresses);
-
-          for (const token of otherTokens) {
-            const price = tokenPrices[token.coinType] || 0;
-            const value = parseFloat(token.balance) * price;
-            totalValue += value;
-
-            tokensWithValue.push({
-              ...token,
-              usdPrice: price,
-              usdValue: value
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching token prices by contract:', error);
-          // Add tokens without price data
-          for (const token of otherTokens) {
-            tokensWithValue.push({
-              ...token,
-              usdPrice: 0,
-              usdValue: 0
-            });
-          }
-        }
-      }
+      // Calculate total value from token USD values
+      const totalValue = tokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
 
       return {
         totalValue: totalValue.toFixed(2),
-        tokens: tokensWithValue,
+        tokens,
         nfts,
         lastUpdated: new Date().toISOString(),
         isLoading: false

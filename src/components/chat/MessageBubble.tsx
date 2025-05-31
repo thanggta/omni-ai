@@ -9,14 +9,34 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CitationLink } from './CitationLink';
 import { cleanMessageContent } from '@/src/lib/utils/swap-action-parser';
+import { cleanPortfolioMessageContent, extractPortfolioUIData } from '@/src/lib/utils/portfolio-action-parser';
+import { PortfolioUI } from '@/src/components/portfolio/PortfolioUI';
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  // Clean message content to remove hidden swap action data
-  const displayContent = message.role === 'assistant' ? cleanMessageContent(message.content) : message.content;
+  // Check if this message contains portfolio UI data
+  const portfolioUIData = extractPortfolioUIData(message.content);
+
+  // Clean message content to remove hidden action data
+  let displayContent = message.content;
+  if (message.role === 'assistant') {
+    displayContent = cleanMessageContent(displayContent);
+    displayContent = cleanPortfolioMessageContent(displayContent);
+  }
+
+  // If this message contains portfolio UI data, render only the portfolio component
+  if (portfolioUIData) {
+    return (
+      <div className="flex justify-start w-full">
+        <div className="w-full max-w-5xl">
+          <PortfolioUI data={portfolioUIData.data} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

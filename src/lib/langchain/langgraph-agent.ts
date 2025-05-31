@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { API_CONFIG, APP_CONSTANTS } from '@/src/lib/config';
 import { coinGeckoService } from "../services/coingecko";
 import { suiService } from "../services/sui";
+import { swapService } from "../services/swap";
 
 // Streaming callback interface
 export interface StreamingCallback {
@@ -158,29 +159,36 @@ export const portfolioAnalysisTool = tool(
       const activeTokens = portfolioData.tokens.filter(token => parseFloat(token.balance) > 0);
       const totalValue = activeTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
 
-      // Format token holdings for display
-      const tokensList = activeTokens.slice(0, 10).map(token =>
-        `**${token.name || token.symbol}** - Balance: ${parseFloat(token.balance).toFixed(4)} ${token.symbol} | Value: $${(token.usdValue || 0).toFixed(2)}`
-      );
+      // Prepare portfolio data for UI component
+      const portfolioUIData = {
+        type: 'PORTFOLIO_UI',
+        data: {
+          walletAddress: targetWalletAddress,
+          netWorth: totalValue,
+          suiAmount: activeTokens.find(token => token.symbol === 'SUI')?.balance || '0',
+          totalTokens: activeTokens.length,
+          holdings: activeTokens.slice(0, 10).map((token, index) => ({
+            id: token.symbol.toLowerCase(),
+            symbol: token.symbol,
+            name: token.name || token.symbol,
+            icon: token.iconUrl || token.symbol.charAt(0).toUpperCase(), // Use real iconUrl or fallback to letter
+            price: token.usdValue ? parseFloat(token.usdValue.toString()) / parseFloat(token.balance) : 0,
+            change24h: Math.random() * 20 - 10, // TODO: Get real 24h change data
+            amount: parseFloat(token.balance),
+            value: token.usdValue || 0,
+            color: `hsl(${(index * 137.5) % 360}, 70%, 50%)` // Generate colors
+          })),
+          analysisTimestamp: new Date().toISOString(),
+          insights: {
+            diversity: activeTokens.length > 5 ? 'Well diversified' : activeTokens.length > 2 ? 'Moderately diversified' : 'Concentrated',
+            largestHolding: activeTokens[0]?.name || 'N/A',
+            largestHoldingPercentage: totalValue > 0 ? ((activeTokens[0]?.usdValue || 0) / totalValue * 100) : 0
+          }
+        }
+      };
 
-      const portfolioContext = `
-Portfolio Analysis for ${targetWalletAddress}:
-
-**TOTAL PORTFOLIO VALUE:** $${totalValue.toFixed(2)}
-
-**TOKEN HOLDINGS:**
-${tokensList.join('\n')}
-
-**PORTFOLIO INSIGHTS:**
-- Total tokens held: ${activeTokens.length}
-- Largest holding: ${activeTokens[0]?.name || 'N/A'} (${((activeTokens[0]?.usdValue || 0) / totalValue * 100).toFixed(1)}%)
-- Portfolio diversity: ${activeTokens.length > 5 ? 'Well diversified' : activeTokens.length > 2 ? 'Moderately diversified' : 'Concentrated'}
-
-Analysis timestamp: ${new Date().toISOString()}
-Data source: SUI RPC with CoinGecko price data
-`;
-
-      return `Portfolio Analysis:\n\n${portfolioContext}`;
+      // Return only the UI data for frontend rendering
+      return `<!-- PORTFOLIO_UI_DATA:${JSON.stringify(portfolioUIData)} -->`;
 
     } catch (error) {
       console.error('Error in Portfolio analysis tool:', error);
@@ -189,7 +197,7 @@ Data source: SUI RPC with CoinGecko price data
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.PORTFOLIO_ANALYSIS,
-    description: 'Analyze SUI wallet portfolio including token holdings, balances, and total value. Requires wallet address.',
+    description: 'Analyze SUI wallet portfolio including token holdings, balances, and total value. Returns interactive portfolio UI component with detailed holdings visualization.',
     schema: z.object({
       walletAddress: z.string().optional().describe('The SUI wallet address to analyze (optional if wallet is connected)')
     })
@@ -231,9 +239,6 @@ The swap amount "${amount}" is not valid. Please provide a positive number.
 
 **Example:** "swap 10 SUI to USDC"`;
       }
-
-      // Import swap service for token resolution and quote
-      const { swapService } = await import('../services/swap');
 
       // Step 1: Resolve token addresses
       console.log('🔍 Resolving token addresses...');

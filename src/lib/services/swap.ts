@@ -9,6 +9,7 @@ import {
 } from '@7kprotocol/sdk-ts';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
+import { coinGeckoService } from "./coingecko";
 
 // #TODO-24.1: Define swap service interfaces
 export interface TokenAddresses {
@@ -60,6 +61,7 @@ const COMMON_TOKEN_ADDRESSES = {
   'CETUS': '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
   'WAL': '0x1efaf509c9b7e986ee724596f526a22b474b15c376136772c00b8452f204d2d1::wal::WAL',
   'NAVX': '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+  'FLX': '0x6dae8ca14311574fdfe555524ea48558e3d1360d1607d1c7f98af867e3b7976c::flx::FLX',
 
   // Additional popular tokens (addresses need verification in production)
   'BLUE': '0x3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c::blue::BLUE',
@@ -126,7 +128,6 @@ export class SwapService {
   private async resolveTokenAddress(tokenSymbol: string): Promise<string> {
     try {
       // Try to get token info from CoinGecko to find contract address
-      const { coinGeckoService } = await import('./coingecko');
       const tokenData = await coinGeckoService.searchTokenBySymbol(tokenSymbol);
       
       if (tokenData && tokenData.platforms && tokenData.platforms['sui-network']) {

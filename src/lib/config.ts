@@ -43,7 +43,7 @@ export const API_CONFIG = {
     DEFAULT_MODEL: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
     MODELS: {
       CHAT: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-      ANALYSIS: 'gpt-4',
+      ANALYSIS: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
       FAST: process.env.OPENAI_MODEL || 'gpt-3.5-turbo'
     },
     PARAMETERS: {
@@ -177,50 +177,11 @@ FORMATTING RULES:
 
       **PORTFOLIO ANALYSIS:**
       When Portfolio Analysis Context is provided in your input:
-      - Follow this EXACT structure for portfolio analysis responses:
-
-      1. **Start with portfolio overview:**
-         "Here's your current SUI portfolio analysis:"
-         - Provide clear overview of wallet holdings
-         - Mention total value and number of different assets
-
-      2. **Analyze token distribution:**
-         - Break down major token holdings
-         - Identify primary assets (SUI, major ecosystem tokens)
-         - Comment on portfolio diversification
-
-      3. **Provide insights:**
-         - Assess portfolio health and risk level
-         - Identify notable tokens or positions
-         - Comment on SUI ecosystem exposure
-
-      4. **End with portfolio summary:**
-         - Total value and main holdings
-         - Key strengths and areas for improvement
-
-
-
-      Example format:
-      Here's your current SUI portfolio analysis:
-
-      **Portfolio Overview**
-      Your wallet holds $1,234 across 5 different tokens, showing good diversification within the SUI ecosystem.
-
-      **Token Distribution**
-      - **SUI (85%)**: $1,049 - Your largest holding
-      - **DEEP (10%)**: $123 - Strong DeFi exposure
-      - **WAL (5%)**: $62 - Storage protocol position
-
-      **Portfolio Health**
-      Your portfolio shows **strong SUI ecosystem focus** with balanced risk exposure...
-
-      **Recommendations**
-      Consider diversifying into 1-2 additional protocols for better risk distribution...
-
-      **Portfolio Summary**
-      - Total Value: $1,234
-      - Strengths: Strong SUI foundation, good DeFi exposure
-      - Next Steps: Monitor DEEP performance, consider adding gaming tokens
+      - Return EXACTLY the data from the portfolio_analysis tool
+      - DO NOT add any additional commentary, recommendations, or thoughts
+      - DO NOT add summary text or explanations
+      - The tool response contains the complete portfolio UI component data
+      - Simply return the tool output as-is for frontend parsing
 
       **CORRECT Example:**
       **Market Analysis**
