@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@7kprotocol/sdk-ts": "^3.0.1",
     "@langchain/core": "^0.3.57",
     "@langchain/langgraph": "^0.2.65",
     "@langchain/openai": "^0.5.11",

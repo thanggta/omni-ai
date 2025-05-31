@@ -7,15 +7,16 @@ import { Card } from "@/components/ui/card";
 import { ChatMessage } from '@/src/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { CitationLink, extractCitations } from './CitationLink';
+import { CitationLink } from './CitationLink';
+import { cleanMessageContent } from '@/src/lib/utils/swap-action-parser';
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  // Extract citations from the message content for display
-  const citations = message.role === 'assistant' ? extractCitations(message.content) : [];
+  // Clean message content to remove hidden swap action data
+  const displayContent = message.role === 'assistant' ? cleanMessageContent(message.content) : message.content;
 
   return (
     <div
@@ -97,7 +98,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     hr: () => <hr className="border-border my-3" />,
                   }}
                 >
-                  {message.content}
+                  {displayContent}
                 </ReactMarkdown>
               </div>
             ) : (

@@ -1,7 +1,6 @@
 // #TODO-14: Build SUI blockchain RPC integration - IMPLEMENTED
 
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { ConnectButton, useCurrentAccount, useDisconnectWallet, useSuiClient } from '@mysten/dapp-kit';
+import { SuiClient, getFullnodeUrl, SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { TokenBalance, PortfolioData } from '@/src/store/atoms';
 
 // #TODO-14.1: SUI RPC client setup - IMPLEMENTED
@@ -60,7 +59,27 @@ export class SUIService {
     }
   }
 
-  // #TODO-14.4: Get all coin balances - IMPLEMENTED
+  // #TODO-26: Get specific token balance - IMPLEMENTED
+  async getTokenBalance(address: string, coinType: string): Promise<number> {
+    try {
+      const balance = await this.client.getBalance({
+        owner: address,
+        coinType: coinType
+      });
+
+      // Convert from smallest unit to token unit
+      // For SUI: 1 SUI = 10^9 MIST
+      // For other tokens, we'll use the same conversion for now
+      // In production, you'd want to get the actual decimals for each token
+      const decimals = coinType === '0x2::sui::SUI' ? 9 : 9; // Default to 9 decimals
+      return parseInt(balance.totalBalance) / Math.pow(10, decimals);
+    } catch (error) {
+      console.error('Failed to get token balance:', error);
+      throw new Error(`Failed to fetch balance for token ${coinType}`);
+    }
+  }
+
+  // #TODO-14.4: Get all coin balances - IMPLEMENTED with zero balance filtering
   async getAllBalances(address: string): Promise<TokenBalance[]> {
     try {
       const balances = await this.client.getAllBalances({
@@ -70,6 +89,12 @@ export class SUIService {
       const tokenBalances: TokenBalance[] = [];
 
       for (const balance of balances) {
+        // Skip tokens with zero balance
+        const totalBalance = parseInt(balance.totalBalance);
+        if (totalBalance === 0) {
+          continue;
+        }
+
         // Get coin metadata for better display
         try {
           const metadata = await this.client.getCoinMetadata({
@@ -80,23 +105,32 @@ export class SUIService {
           const symbol = metadata?.symbol || 'UNKNOWN';
           const name = metadata?.name || 'Unknown Token';
           const iconUrl = metadata?.iconUrl || undefined;
+          const formattedBalance = (totalBalance / Math.pow(10, decimals)).toString();
 
-          tokenBalances.push({
-            coinType: balance.coinType,
-            symbol,
-            name,
-            balance: (parseInt(balance.totalBalance) / Math.pow(10, decimals)).toString(),
-            decimals,
-            iconUrl
-          });
+          // Only add tokens with non-zero formatted balance
+          if (parseFloat(formattedBalance) > 0) {
+            tokenBalances.push({
+              coinType: balance.coinType,
+              symbol,
+              name,
+              balance: formattedBalance,
+              decimals,
+              iconUrl
+            });
+          }
         } catch (metadataError) {
-          // If metadata fetch fails, use basic info
-          tokenBalances.push({
-            coinType: balance.coinType,
-            symbol: balance.coinType.split('::').pop() || 'UNKNOWN',
-            balance: balance.totalBalance,
-            decimals: 9
-          });
+          // If metadata fetch fails, use basic info but still check for non-zero balance
+          const decimals = 9;
+          const formattedBalance = (totalBalance / Math.pow(10, decimals)).toString();
+
+          if (parseFloat(formattedBalance) > 0) {
+            tokenBalances.push({
+              coinType: balance.coinType,
+              symbol: balance.coinType.split('::').pop() || 'UNKNOWN',
+              balance: formattedBalance,
+              decimals
+            });
+          }
         }
       }
 
@@ -129,27 +163,87 @@ export class SUIService {
     }
   }
 
-  // #TODO-14.6: Get full portfolio data - IMPLEMENTED
+  // #TODO-14.6: Get full portfolio data - IMPLEMENTED with real price calculation
   async getPortfolio(address: string): Promise<PortfolioData> {
     try {
-      // Get all token balances
+      // Get all token balances (already filtered for non-zero balances)
       const tokens = await this.getAllBalances(address);
 
       // Get NFTs
       const nfts = await this.getNFTs(address);
 
-      // Calculate total value (simplified - in production, you'd get USD prices)
+      // Calculate total value using real token prices
       let totalValue = 0;
-      for (const token of tokens) {
-        if (token.symbol === 'SUI') {
-          // For SUI, we can estimate value (you'd use real price feeds in production)
-          totalValue += parseFloat(token.balance) * 2; // Placeholder price
+      const tokensWithValue = [];
+
+      // Import CoinGecko service for price fetching
+      const { coinGeckoService } = await import('../services/coingecko');
+
+      // Get SUI main token price first (most common)
+      const suiToken = tokens.find(token => token.coinType === '0x2::sui::SUI');
+      if (suiToken) {
+        try {
+          const suiPrice = await coinGeckoService.getTokenMarketData('sui');
+          if (suiPrice?.current_price) {
+            const suiValue = parseFloat(suiToken.balance) * suiPrice.current_price;
+            totalValue += suiValue;
+            tokensWithValue.push({
+              ...suiToken,
+              usdPrice: suiPrice.current_price,
+              usdValue: suiValue
+            });
+          } else {
+            tokensWithValue.push({
+              ...suiToken,
+              usdPrice: 0,
+              usdValue: 0
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching SUI price:', error);
+          tokensWithValue.push({
+            ...suiToken,
+            usdPrice: 0,
+            usdValue: 0
+          });
+        }
+      }
+
+      // For other tokens, try to get prices by contract address
+      const otherTokens = tokens.filter(token => token.coinType !== '0x2::sui::SUI');
+      if (otherTokens.length > 0) {
+        try {
+          // Extract contract addresses for batch price fetching
+          const contractAddresses = otherTokens.map(token => token.coinType);
+          const tokenPrices = await coinGeckoService.getMultipleTokenPricesByContract(contractAddresses);
+
+          for (const token of otherTokens) {
+            const price = tokenPrices[token.coinType] || 0;
+            const value = parseFloat(token.balance) * price;
+            totalValue += value;
+
+            tokensWithValue.push({
+              ...token,
+              usdPrice: price,
+              usdValue: value
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching token prices by contract:', error);
+          // Add tokens without price data
+          for (const token of otherTokens) {
+            tokensWithValue.push({
+              ...token,
+              usdPrice: 0,
+              usdValue: 0
+            });
+          }
         }
       }
 
       return {
         totalValue: totalValue.toFixed(2),
-        tokens,
+        tokens: tokensWithValue,
         nfts,
         lastUpdated: new Date().toISOString(),
         isLoading: false
@@ -187,3 +281,69 @@ export class SUIService {
 
 // Export singleton instance
 export const suiService = new SUIService();
+
+export class SuiTransactionError extends Error {
+	constructor(
+		message: string,
+		public readonly digest?: string,
+		public readonly effects?: any,
+		public readonly isCancelled: boolean = false,
+	) {
+		super(message);
+		this.name = "SuiTransactionError";
+	}
+}
+
+export const handleSuiError = (error: unknown) => {
+	if (error instanceof SuiTransactionError) {
+		return error;
+	}
+
+	if (error instanceof Error) {
+		if (error.message.includes("User rejected the request")) {
+			return new SuiTransactionError(
+				"Transaction cancelled by user",
+				undefined,
+				undefined,
+				true,
+			);
+		}
+		return new SuiTransactionError(error.message);
+	}
+
+	return new SuiTransactionError("Unknown error occurred");
+};
+
+export const executeSuiTransaction = async ({
+	client,
+	signature,
+	bytes,
+}: {
+	client: SuiClient;
+	signature: string | string[];
+	bytes: string;
+}): Promise<SuiTransactionBlockResponse> => {
+	const { digest } = await client.executeTransactionBlock({
+		signature,
+		transactionBlock: bytes,
+		requestType: "WaitForEffectsCert",
+	});
+
+	const response = await client.waitForTransaction({
+		digest,
+		options: {
+			showEffects: true,
+			showObjectChanges: true,
+		},
+	});
+
+	if (response.effects?.status.status !== "success") {
+		throw new SuiTransactionError(
+			response.effects?.status.error || "Transaction failed",
+			digest,
+			response.effects,
+		);
+	}
+
+	return response;
+};

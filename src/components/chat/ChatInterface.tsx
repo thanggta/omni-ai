@@ -9,10 +9,14 @@ import { chatMessagesAtom } from '@/src/store/atoms';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { WelcomeScreen } from './WelcomeScreen';
+import { useAutoSwap } from '@/src/hooks/use-auto-swap';
 
 // #TODO-7: Simple chat interface main component using modular components
 export function ChatInterface() {
   const [messages] = useAtom(chatMessagesAtom);
+
+  // Initialize auto-swap functionality
+  useAutoSwap();
 
   return (
     <div className="h-screen flex flex-col">

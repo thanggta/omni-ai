@@ -218,6 +218,82 @@ export class CoinGeckoService {
     return `https://www.coingecko.com/en/coins/${tokenId}`;
   }
 
+  // #TODO-12.6: Get token price by contract address - NEW
+  async getTokenPriceByContract(contractAddress: string, platformId: string = 'sui'): Promise<number | null> {
+    try {
+      const response = await this.makeRequest(`/simple/token_price/${platformId}`, {
+        contract_addresses: contractAddress,
+        vs_currencies: 'usd'
+      });
+
+      // Response format: { "contract_address": { "usd": price } }
+      const tokenData = response[contractAddress.toLowerCase()];
+      return tokenData?.usd || null;
+    } catch (error) {
+      console.error(`Error fetching price for contract ${contractAddress}:`, error);
+      return null;
+    }
+  }
+
+  // #TODO-12.7: Get multiple token prices by contract addresses - NEW
+  async getMultipleTokenPricesByContract(contractAddresses: string[], platformId: string = 'sui'): Promise<Record<string, number>> {
+    try {
+      if (contractAddresses.length === 0) return {};
+
+      const response = await this.makeRequest(`/simple/token_price/${platformId}`, {
+        contract_addresses: contractAddresses.join(','),
+        vs_currencies: 'usd'
+      });
+
+      const prices: Record<string, number> = {};
+      for (const address of contractAddresses) {
+        const tokenData = response[address.toLowerCase()];
+        if (tokenData?.usd) {
+          prices[address] = tokenData.usd;
+        }
+      }
+
+      return prices;
+    } catch (error) {
+      console.error('Error fetching multiple token prices:', error);
+      return {};
+    }
+  }
+
+  // #TODO-12.8: Search token by symbol - NEW
+  async searchTokenBySymbol(symbol: string): Promise<any | null> {
+    try {
+      const response = await this.makeRequest('/search', {
+        query: symbol
+      });
+
+      // Find token in coins array that matches the symbol
+      const coins = response.coins || [];
+      const matchingCoin = coins.find((coin: any) =>
+        coin.symbol?.toLowerCase() === symbol.toLowerCase()
+      );
+
+      if (matchingCoin) {
+        // Get detailed token info including platform addresses
+        const detailResponse = await this.makeRequest(`/coins/${matchingCoin.id}`, {
+          localization: false,
+          tickers: false,
+          market_data: false,
+          community_data: false,
+          developer_data: false,
+          sparkline: false
+        });
+
+        return detailResponse;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error searching for token ${symbol}:`, error);
+      return null;
+    }
+  }
+
   // Helper method to check if service is properly configured
   isConfigured(): boolean {
     return !!this.baseUrl;

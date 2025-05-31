@@ -9,6 +9,7 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { API_CONFIG, APP_CONSTANTS } from '@/src/lib/config';
 import { coinGeckoService } from "../services/coingecko";
+import { suiService } from "../services/sui";
 
 // Streaming callback interface
 export interface StreamingCallback {
@@ -19,37 +20,12 @@ export interface StreamingCallback {
   walletAddress?: string; // Add wallet address for portfolio analysis
 }
 
-// TypeScript interfaces for tool responses
-export interface TrendingPost {
-  title: string;
-  content_summary: string;
-  engagement_metrics: {
-    likes: number;
-    reposts: number;
-    comments: number;
-    engagement_score: number;
-  };
-  post_url: string;
-  author: string;
-  timestamp: string;
-  category: 'ecosystem_news' | 'token_protocol' | 'nft_gaming' | 'defi_grants' | 'technical_update' | 'partnership' | 'other';
-  trending_factor: 'high' | 'medium' | 'rising';
-}
-
-interface XAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-}
-
 // #TODO-19.2: Twitter analysis tool - IMPLEMENTED with LangGraph
 export const twitterAnalysisTool = tool(
   async ({ query }: { query: string }) => {
     try {
       console.log(`🐦 Analyzing Twitter trends for: ${query}`);
-      
+
       // Use X.AI Grok API to fetch and analyze trending crypto posts
       const response = await fetch(`${API_CONFIG.XAI_API.BASE_URL}/chat/completions`, {
         method: "POST",
@@ -79,7 +55,7 @@ export const twitterAnalysisTool = tool(
         throw new Error(`X.AI API error: ${response.status} ${response.statusText}`);
       }
 
-      const data: XAIResponse = await response.json();
+      const data: any = await response.json();
       const analysisResult = data.choices?.[0]?.message?.content || 'No analysis available';
 
       return `Twitter Analysis for "${query}":\n\n${analysisResult}`;
@@ -91,7 +67,7 @@ export const twitterAnalysisTool = tool(
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.TWITTER_ANALYSIS,
-    description: 'Analyze market news/trendd for blockchain and crypto topics using X.AI Grok. Provides trending X posts, engagement metrics, and sentiment analysis.',
+    description: 'Analyze market news/trends for blockchain and crypto topics using X.AI Grok. Provides trending X posts, engagement metrics, and sentiment analysis.',
     schema: z.object({
       query: z.string().describe('The search query for market analysis (e.g., "market news", "trending", "crypto")')
     })
@@ -103,7 +79,7 @@ export const marketAnalysisTool = tool(
   async ({ query }: { query: string }) => {
     try {
       console.log(`📊 Analyzing SUI market data for: ${query}`);
-      
+
       // Fetch SUI ecosystem token data from CoinGecko using optimized category filter
       const suiTokens = await coinGeckoService.fetchSUITokens();
 
@@ -115,19 +91,19 @@ export const marketAnalysisTool = tool(
       const priceMovements = await coinGeckoService.monitorPriceMovements();
 
       // Format top 8 trending tokens for display
-      const trendingTokensList = suiTokens.slice(0, 8).map(token => 
+      const trendingTokensList = suiTokens.slice(0, 8).map(token =>
         `**${token.name} (${token.symbol.toUpperCase()})** - Price: $${token.current_price} | 24h: ${token.price_change_percentage_24h >= 0 ? '+' : ''}${token.price_change_percentage_24h?.toFixed(2)}% | Volume: $${(token.total_volume / 1000000).toFixed(1)}M | Market Cap: $${(token.market_cap / 1000000).toFixed(1)}M`
       );
 
       // Create market data URLs for citations
-      const marketDataUrls = suiTokens.slice(0, 8).map(token => 
+      const marketDataUrls = suiTokens.slice(0, 8).map(token =>
         `[${token.name}](${coinGeckoService.generateTokenUrl(token.id)})`
       );
 
       const marketAnalysisContext = `
 SUI Ecosystem Market Analysis for "${query}":
 
-TRENDING TOKENS: 
+TRENDING TOKENS:
 ${trendingTokensList}
 
 MARKET INSIGHTS:
@@ -158,6 +134,193 @@ Data source: CoinGecko API with SUI ecosystem category filter
   }
 );
 
+// #TODO-19.4: Portfolio analysis tool - IMPLEMENTED
+export const portfolioAnalysisTool = tool(
+  async ({ walletAddress }: { walletAddress?: string }, config?: any) => {
+    // Try to extract wallet address from the config or message context
+    let targetWalletAddress = walletAddress;
+
+    try {
+      console.log(`💼 Analyzing portfolio for wallet: ${targetWalletAddress || 'not provided'}`);
+
+      if (!targetWalletAddress) {
+        return `Portfolio Analysis - No wallet address provided. Please connect your wallet or provide a wallet address to analyze.`;
+      }
+
+      // Get portfolio data using SUI service
+      const portfolioData = await suiService.getPortfolio(targetWalletAddress);
+
+      if (!portfolioData || portfolioData.tokens.length === 0) {
+        return `Portfolio Analysis for ${targetWalletAddress}:\n\n**No tokens found** - This wallet appears to be empty or the address is invalid.`;
+      }
+
+      // Filter out tokens with zero balance and calculate total value
+      const activeTokens = portfolioData.tokens.filter(token => parseFloat(token.balance) > 0);
+      const totalValue = activeTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
+
+      // Format token holdings for display
+      const tokensList = activeTokens.slice(0, 10).map(token =>
+        `**${token.name || token.symbol}** - Balance: ${parseFloat(token.balance).toFixed(4)} ${token.symbol} | Value: $${(token.usdValue || 0).toFixed(2)}`
+      );
+
+      const portfolioContext = `
+Portfolio Analysis for ${targetWalletAddress}:
+
+**TOTAL PORTFOLIO VALUE:** $${totalValue.toFixed(2)}
+
+**TOKEN HOLDINGS:**
+${tokensList.join('\n')}
+
+**PORTFOLIO INSIGHTS:**
+- Total tokens held: ${activeTokens.length}
+- Largest holding: ${activeTokens[0]?.name || 'N/A'} (${((activeTokens[0]?.usdValue || 0) / totalValue * 100).toFixed(1)}%)
+- Portfolio diversity: ${activeTokens.length > 5 ? 'Well diversified' : activeTokens.length > 2 ? 'Moderately diversified' : 'Concentrated'}
+
+Analysis timestamp: ${new Date().toISOString()}
+Data source: SUI RPC with CoinGecko price data
+`;
+
+      return `Portfolio Analysis:\n\n${portfolioContext}`;
+
+    } catch (error) {
+      console.error('Error in Portfolio analysis tool:', error);
+      return `Portfolio analysis failed - Unable to fetch portfolio data. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the wallet address and try again.`;
+    }
+  },
+  {
+    name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.PORTFOLIO_ANALYSIS,
+    description: 'Analyze SUI wallet portfolio including token holdings, balances, and total value. Requires wallet address.',
+    schema: z.object({
+      walletAddress: z.string().optional().describe('The SUI wallet address to analyze (optional if wallet is connected)')
+    })
+  }
+);
+
+// #TODO-24: Implement 7k SDK swap service - IMPLEMENTED
+// #TODO-25: Create LangChain swap execution tool - IMPLEMENTED (Frontend Action)
+export const swapExecutionTool = tool(
+  async ({
+    fromToken,
+    toToken,
+    amount,
+    walletAddress
+  }: {
+    fromToken: string;
+    toToken: string;
+    amount: string;
+    walletAddress?: string;
+  }, config?: any) => {
+    try {
+      console.log(`🔄 Preparing swap action: ${amount} ${fromToken} → ${toToken}`);
+
+      // Validate required parameters
+      if (!fromToken || !toToken || !amount) {
+        return `❌ **Swap Request Invalid**
+
+Missing required parameters. Please specify: from token, to token, and amount.
+
+**Example:** "I want to swap 10 SUI to USDC"`;
+      }
+
+      // Validate amount is a valid number
+      const swapAmount = parseFloat(amount);
+      if (isNaN(swapAmount) || swapAmount <= 0) {
+        return `❌ **Invalid Amount**
+
+The swap amount "${amount}" is not valid. Please provide a positive number.
+
+**Example:** "swap 10 SUI to USDC"`;
+      }
+
+      // Import swap service for token resolution and quote
+      const { swapService } = await import('../services/swap');
+
+      // Step 1: Resolve token addresses
+      console.log('🔍 Resolving token addresses...');
+      const tokenAddresses = await swapService.resolveTokenAddresses(fromToken, toToken);
+
+      if (!tokenAddresses.fromTokenAddress || !tokenAddresses.toTokenAddress) {
+        return `❌ **Token Resolution Failed**
+
+Could not resolve token addresses for **${fromToken}** and/or **${toToken}**.
+
+**Supported tokens:** SUI, USDC, USDT, DEEP, CETUS, WAL, BUCK, WETH
+
+Please check the token symbols and try again.`;
+      }
+
+      // Step 2: Get price quote
+      console.log('💰 Getting price quote...');
+      const quote = await swapService.getSwapQuote(
+        tokenAddresses.fromTokenAddress,
+        tokenAddresses.toTokenAddress,
+        swapAmount
+      );
+
+      if (!quote.success || !quote.data) {
+        return `❌ **Price Quote Failed**
+
+Could not get price quote: ${quote.error}
+
+This might be due to:
+- Insufficient liquidity for this token pair
+- Network connectivity issues
+- Token not available on DEX
+
+Please try a different amount or token pair.`;
+      }
+
+      // Return structured action for frontend to handle
+      const swapAction = {
+        type: 'SWAP_ACTION',
+        data: {
+          fromToken: fromToken.toUpperCase(),
+          toToken: toToken.toUpperCase(),
+          amount: swapAmount,
+          fromTokenAddress: tokenAddresses.fromTokenAddress,
+          toTokenAddress: tokenAddresses.toTokenAddress,
+          expectedOutput: quote.data.expectedOutput,
+          minimumReceived: quote.data.minimumReceived,
+          priceImpact: quote.data.priceImpact,
+          exchangeRate: quote.data.exchangeRate,
+          estimatedGasFee: quote.data.gasFee,
+          // Add data needed for use-7k-swap hook
+          amountIn: Math.floor(swapAmount * Math.pow(10, 9)).toString(), // Convert to smallest unit
+          slippage: 0.01 // 1% slippage
+        }
+      };
+
+      // Return user-friendly message with hidden structured data for frontend
+      return `I will now proceed to execute the swap for you. Please hold on a moment while I handle the transaction.
+
+<!-- SWAP_ACTION_DATA:${JSON.stringify(swapAction)} -->`;
+
+    } catch (error) {
+      console.error('Swap preparation error:', error);
+      return `❌ **Swap Preparation Failed**
+
+An unexpected error occurred while preparing your swap: ${error instanceof Error ? error.message : 'Unknown error'}
+
+**Possible solutions:**
+- Check your internet connection
+- Try again in a few moments
+- Ensure the token symbols are correct
+
+Please try again or contact support if the issue persists.`;
+    }
+  },
+  {
+    name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.SWAP_EXECUTION,
+    description: 'CRITICAL: Use this tool whenever users mention swap, exchange, trade, convert, or change tokens. Prepares token swap actions for frontend execution. Handles token resolution, price quotes, and returns structured swap data for frontend wallet integration. Use for ANY request involving token swapping/trading/exchanging.',
+    schema: z.object({
+      fromToken: z.string().describe('The token to swap from (e.g., "SUI", "USDC", "DEEP")'),
+      toToken: z.string().describe('The token to swap to (e.g., "SUI", "USDC", "DEEP")'),
+      amount: z.string().describe('The amount to swap (e.g., "10", "0.5", "100")'),
+      walletAddress: z.string().optional().describe('The wallet address to execute swap from. If not provided, will use connected wallet.')
+    })
+  }
+);
+
 // #TODO-19.7: LangGraph ReactAgent orchestrator - IMPLEMENTED
 export class LangGraphAgent {
   private agent: any;
@@ -178,13 +341,10 @@ export class LangGraphAgent {
     // Initialize memory to persist state between graph runs
     this.checkpointer = new MemorySaver();
 
-    // Import portfolio tool
-    const { portfolioAnalysisTool } = require('./tools');
-
-    // Create ReactAgent with tools
+    // Create ReactAgent with tools - swapExecutionTool first for priority
     this.agent = createReactAgent({
       llm: this.chatModel,
-      tools: [twitterAnalysisTool, marketAnalysisTool, portfolioAnalysisTool],
+      tools: [swapExecutionTool, twitterAnalysisTool, marketAnalysisTool, portfolioAnalysisTool],
       checkpointSaver: this.checkpointer,
     });
   }
