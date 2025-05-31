@@ -1,19 +1,22 @@
-import { DemoComponent } from "@/src/components/demo/demo-component";
+// #TODO-6: Create simple chat interface as main page (NO navigation, header, or complex layout)
+
+import { ChatInterface } from "@/src/components/chat";
 
 export default function Home() {
+  // #TODO-6.1: Simple main page with only chatbox
+  // TODO: Focus on core chat functionality:
+  // - Full-screen chat interface
+  // - No navigation or header
+  // - Simple, clean design
+  // - Focus on AI interaction for first 3 features:
+  //   1. Twitter sentiment analysis
+  //   2. Market intelligence
+  //   3. Chat-based insights
+
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="container mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">
-            Jotai + shadcn/ui + Sonner Integration
-          </h1>
-          <p className="text-muted-foreground">
-            A complete setup with state management, UI components, and notifications
-          </p>
-        </div>
-        <DemoComponent />
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* #TODO-6.2: Full-screen chat interface */}
+      <ChatInterface />
     </div>
   );
 }

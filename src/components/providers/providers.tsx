@@ -3,6 +3,7 @@
 import { ReactNode } from 'react'
 import { JotaiProvider } from './jotai-provider'
 import { ToastProvider } from './toast-provider'
+import { SuiProvider } from './sui-provider'
 
 interface ProvidersProps {
   children: ReactNode
@@ -10,9 +11,11 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <JotaiProvider>
-      {children}
-      <ToastProvider />
-    </JotaiProvider>
+    <SuiProvider>
+      <JotaiProvider>
+        {children}
+        <ToastProvider />
+      </JotaiProvider>
+    </SuiProvider>
   )
 }
