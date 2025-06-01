@@ -1,0 +1,29 @@
+{
+  "name": "SUI Daily Assistant - AI-Powered Blockchain Companion",
+  "short_name": "SUI Assistant",
+  "description": "An intelligent AI agent designed to serve as a comprehensive daily companion for active users of the SUI blockchain ecosystem",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00D4FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}

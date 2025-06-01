@@ -4,7 +4,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useAtom } from 'jotai';
-import { toast } from 'sonner';
 import { ExternalLink, AlertTriangle, TrendingUp, DollarSign, Shield, Users, BellRing, Zap } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -103,13 +102,6 @@ export function AlertSystem() {
           if (shouldNotify) {
             // Show toast notification only for new, non-duplicate alerts
             // But DON'T automatically show modal - just show the alert button
-            toast.success(`New ${alert.type.replace('_', ' ')} alert!`, {
-              description: alert.title,
-              action: {
-                label: 'View',
-                onClick: () => showAlertModal(alert)
-              }
-            });
 
             console.log(`🔔 USER NOTIFIED: "${alert.title}" - Alert button will appear`);
           } else {
@@ -143,31 +135,6 @@ export function AlertSystem() {
       };
     }
   }, [alertState.settings.enabled, alertState.settings.pollInterval, setPolling, addAlert, notifyAlert, showAlertModal]);
-
-  // #TODO-24.5: Handle alert button click - fetch alerts manually
-  const handleAlertButtonClick = async () => {
-    setIsLoading(true);
-    try {
-      const result = await fetchAlertsManually();
-      if (result.success && result.count > 0) {
-        toast.success(`Found ${result.count} new alert${result.count > 1 ? 's' : ''}!`);
-
-        // Show the latest alert in modal if there are any
-        if (alertState.alerts.length > 0) {
-          showAlertModal(alertState.alerts[0]);
-        }
-      } else if (result.success) {
-        toast.info('No new alerts found');
-      } else {
-        toast.error('Failed to fetch alerts');
-      }
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
-      toast.error('Failed to fetch alerts');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // #TODO-24.6: Handle showing alerts list (show modal with latest alert)
   const handleShowAlerts = () => {
@@ -209,26 +176,6 @@ export function AlertSystem() {
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#39FF14] rounded-full"></div>
             </Button>
           )}
-
-          {/* Manual fetch button - always available */}
-          <Button
-            onClick={handleAlertButtonClick}
-            disabled={isLoading}
-            className="bg-gradient-to-r from-[#00FFFF] to-[#00BFFF] hover:from-[#00BFFF] hover:to-[#FF00FF] text-black font-semibold transition-all duration-300 shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] border-0 disabled:opacity-50"
-            size="sm"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 mr-2 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                Checking...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                Check Alerts
-              </>
-            )}
-          </Button>
         </div>
       </div>
 

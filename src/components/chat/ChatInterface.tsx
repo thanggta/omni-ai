@@ -34,15 +34,30 @@ export function ChatInterface() {
         {/* Animated Background Gradient */}
         <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-electric-cyan via-neon-blue to-vivid-purple bg-[size:400%_400%] animate-gradient-shift"></div>
 
-        {/* Grid Lines */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,191,255,0.1)_1px,transparent_1px)] bg-[size:30px_30px]"></div>
+        {/* Enhanced Grid Lines with Pulsing Effect */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,191,255,0.1)_1px,transparent_1px)] bg-[size:30px_30px] animate-grid-pulse"></div>
 
-        {/* Animated Particles */}
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-electric-cyan animate-pulse-slow"></div>
-        <div className="absolute top-3/4 right-1/3 w-2 h-2 rounded-full bg-vivid-purple animate-pulse-slow"></div>
-        <div className="absolute top-2/3 left-1/2 w-2 h-2 rounded-full bg-neon-blue animate-pulse-slow"></div>
-        <div className="absolute top-1/2 right-1/4 w-1 h-1 rounded-full bg-hot-pink animate-pulse-slow"></div>
-        <div className="absolute top-1/3 left-1/3 w-1 h-1 rounded-full bg-neon-green animate-pulse-slow"></div>
+        {/* Secondary Grid Layer for Depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.05)_1px,transparent_1px)] bg-[size:60px_60px] animate-grid-pulse" style={{ animationDelay: '2s' }}></div>
+
+        {/* Enhanced Animated Particles with Combined Glowing and Drifting Effects */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-electric-cyan animate-dot-glow-drift-cyan"></div>
+        <div className="absolute top-3/4 right-1/3 w-2 h-2 rounded-full bg-vivid-purple animate-dot-glow-drift-purple" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-2/3 left-1/2 w-2 h-2 rounded-full bg-neon-blue animate-dot-glow-drift-blue" style={{ animationDelay: '2s' }}></div>
+
+        {/* Floating Particles with Combined Glow and Float Effects */}
+        <div className="absolute top-1/2 right-1/4 w-1 h-1 rounded-full bg-hot-pink animate-particle-float-glow-cyan" style={{ animationDelay: '0.5s' }}></div>
+        <div className="absolute top-1/3 left-1/3 w-1 h-1 rounded-full bg-neon-green animate-particle-float-glow-cyan" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute top-1/5 right-1/5 w-1.5 h-1.5 rounded-full bg-electric-cyan animate-particle-float-glow-cyan" style={{ animationDelay: '3s' }}></div>
+        <div className="absolute top-4/5 left-1/5 w-1 h-1 rounded-full bg-vivid-purple animate-particle-float-glow-purple" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute top-1/6 left-2/3 w-1 h-1 rounded-full bg-neon-blue animate-particle-float-glow-blue" style={{ animationDelay: '2.5s' }}></div>
+        <div className="absolute top-5/6 right-2/3 w-1.5 h-1.5 rounded-full bg-hot-pink animate-particle-float-glow-purple" style={{ animationDelay: '3.5s' }}></div>
+        <div className="absolute top-2/5 left-4/5 w-1 h-1 rounded-full bg-neon-green animate-particle-float-glow-blue" style={{ animationDelay: '1s' }}></div>
+
+        {/* Additional Scattered Particles for More Dynamic Feel */}
+        <div className="absolute top-1/8 left-1/8 w-0.5 h-0.5 rounded-full bg-electric-cyan animate-particle-float-glow-cyan" style={{ animationDelay: '5s' }}></div>
+        <div className="absolute top-7/8 right-1/8 w-0.5 h-0.5 rounded-full bg-vivid-purple animate-particle-float-glow-purple" style={{ animationDelay: '6s' }}></div>
+        <div className="absolute top-3/8 right-3/8 w-0.5 h-0.5 rounded-full bg-neon-blue animate-particle-float-glow-blue" style={{ animationDelay: '4.5s' }}></div>
       </div>
 
       {/* Top-right wallet connect button - positioned absolutely to viewport */}

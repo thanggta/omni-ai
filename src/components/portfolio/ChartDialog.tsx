@@ -4,7 +4,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { ExternalLink, BarChart3, TrendingUp, TrendingDown} from "lucide-react";
 import { TrendingToken } from './TrendingTokensUI';
 
 interface ChartDialogProps {
@@ -84,8 +84,8 @@ export function ChartDialog({ token, isOpen, onClose }: ChartDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[70vw] h-[85vh] p-0" showCloseButton={false}>
-        <DialogHeader className="p-6 pb-4">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] p-0 sm:max-w-[90vw] flex flex-col" showCloseButton={false}>
+        <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BarChart3 className="w-5 h-5" />
@@ -106,8 +106,8 @@ export function ChartDialog({ token, isOpen, onClose }: ChartDialogProps) {
         </DialogHeader>
 
         {/* Market Information Panel */}
-        <div className="px-6 pb-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+        <div className="px-6 pb-4 flex-shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
             {/* Price */}
             <div className="space-y-1">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</div>
@@ -135,32 +135,11 @@ export function ChartDialog({ token, isOpen, onClose }: ChartDialogProps) {
               <div className="text-lg font-bold">{formatNumber(token.marketCap)}</div>
             </div>
           </div>
-
-          {/* Additional price changes row */}
-          <div className="grid grid-cols-2 gap-4 mt-3 p-3 bg-white rounded-lg border border-gray-100">
-            {/* 1h Change */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">1h Change:</span>
-              <div className={`text-sm font-medium flex items-center gap-1 ${getChangeColor(token.change1h)}`}>
-                {token.change1h > 0 ? '+' : ''}{token.change1h.toFixed(1)}%
-                {getChangeIcon(token.change1h)}
-              </div>
-            </div>
-
-            {/* 7d Change */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">7d Change:</span>
-              <div className={`text-sm font-medium flex items-center gap-1 ${getChangeColor(token.change7d)}`}>
-                {token.change7d > 0 ? '+' : ''}{token.change7d.toFixed(1)}%
-                {getChangeIcon(token.change7d)}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Chart iframe */}
-        <div className="flex-1 px-6 pb-6">
-          <div className="w-full h-full rounded-lg overflow-hidden border bg-background">
+        <div className="flex-1 px-6 pb-6 min-h-0">
+          <div className="w-full h-full min-h-[500px] rounded-lg overflow-hidden border bg-background">
             <iframe
               src={chartUrl}
               className="w-full h-full border-0"

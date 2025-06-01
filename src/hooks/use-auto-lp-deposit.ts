@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
-import { toast } from 'sonner';
 import { useLPDeposit } from './use-lp-deposit';
 import { useSuiBase } from './use-sui-base';
 import { extractLPDepositActionData, hasLPDepositAction } from '@/src/lib/utils/lp-deposit-action-parser';
@@ -85,7 +84,6 @@ export function useAutoLPDeposit() {
         };
 
         addMessage(walletMessage);
-        toast.warning('Please connect your wallet to proceed with LP deposit');
       }
     }
   }, [messages, account, addMessage]);
@@ -132,7 +130,6 @@ export function useAutoLPDeposit() {
       };
 
       addMessage(loadingMessage);
-      toast.info('Please confirm the LP deposit transaction in your wallet');
 
       // Execute the LP deposit using the LP deposit hook
       const result = await lpDepositMutation.mutateAsync({
@@ -187,7 +184,6 @@ export function useAutoLPDeposit() {
       };
 
       addMessage(successMessage);
-      toast.success(`LP deposit successful! Deposited ${lpDepositActionData.data.amount} ${lpDepositActionData.data.vaultSymbol}`);
 
     } catch (error) {
       console.error('LP deposit failed:', error);
@@ -228,7 +224,6 @@ export function useAutoLPDeposit() {
       };
 
       addMessage(errorMessage);
-      toast.error(`LP deposit failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 }

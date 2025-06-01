@@ -126,12 +126,12 @@ TOOL SELECTION RULES:
 - For "deposit" + "LP/vault" → Use depositLP tool
 
 Available tools:
-- market_intelligence: For trending tokens, market analysis, price data (NOT for personal portfolios)
+- market_news_analysis: For market news and social media sentiment analysis, especially on X. It focus more about the news.
+- market_intelligence: For trending tokens, market analysis, price data (NOT for personal portfolios). It focus more about tokens.
 - portfolio_analysis: For personal wallet analysis ONLY (NOT for trending tokens)
 - swap_execution: For token swaps/exchanges/trades
 - depositLP: For LP/vault deposits
 - getLPInfo: For LP position information
-- twitter_sentiment_analysis: For social sentiment analysis
 
 You can help with:
 - Trading insights and strategies
@@ -241,7 +241,7 @@ FORMATTING RULES:
       Always remind users that trading involves risks and to do their own research.`,
     },
     TOOL_NAMES: {
-      TWITTER_ANALYSIS: 'twitter_sentiment_analysis',
+      TWITTER_ANALYSIS: 'market_news_analysis',
       MARKET_ANALYSIS: 'market_intelligence',
       PORTFOLIO_ANALYSIS: 'portfolio_analysis',
       SWAP_EXECUTION: 'swap_execution',

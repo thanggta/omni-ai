@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
-import { toast } from 'sonner';
 import { use7kSwap } from './use-7k-swap';
 import { useSuiBase } from './use-sui-base';
 import { extractSwapActionData, hasSwapAction } from '@/src/lib/utils/swap-action-parser';
@@ -69,7 +68,6 @@ export function useAutoSwap() {
           timestamp: new Date(),
         };
         addMessage(walletMessage);
-        toast.error('Please connect your wallet to execute the swap');
       }
     }
   }, [messages, account, updateMessage, addMessage]);
@@ -126,7 +124,6 @@ export function useAutoSwap() {
       };
 
       addMessage(loadingMessage);
-      toast.info('Please confirm the transaction in your wallet');
 
       // Execute the swap using the 7k hook
       const result = await swapMutation.mutateAsync({
@@ -173,7 +170,6 @@ export function useAutoSwap() {
       };
 
       addMessage(successMessage);
-      toast.success('Swap completed successfully!');
 
     } catch (error) {
       console.error('Swap execution error:', error);
@@ -220,7 +216,6 @@ export function useAutoSwap() {
       };
 
       addMessage(errorMessage);
-      toast.error('Swap failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
