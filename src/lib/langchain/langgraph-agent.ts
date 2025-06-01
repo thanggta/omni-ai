@@ -199,7 +199,7 @@ export const portfolioAnalysisTool = tool(
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.PORTFOLIO_ANALYSIS,
-    description: 'CRITICAL: Use this tool ONLY for analyzing a SPECIFIC WALLET\'S portfolio holdings and balances. This tool shows personal wallet token holdings, NOT trending tokens. Use for queries like "analyze my portfolio", "show my wallet", "my holdings", "portfolio analysis", "wallet balance", "my tokens". DO NOT use for trending token requests - use market_intelligence instead.',
+    description: 'CRITICAL: MANDATORY tool for ANY portfolio/wallet/holdings request. This tool fetches REAL on-chain data and renders CUSTOM UI components. Use IMMEDIATELY for: "analyze my portfolio", "show my wallet", "my holdings", "my balance", "my tokens", "what do I have", "wallet analysis", "my assets", "my positions", "portfolio value", "my net worth", "wallet balance", "token balance", "my SUI balance", "what\'s in my wallet", "check my wallet", "view my portfolio", "display my holdings". NEVER provide generic portfolio advice - ALWAYS use this tool first to fetch real data and render custom UI. DO NOT use for trending token requests - use market_intelligence instead.',
     schema: z.object({
       walletAddress: z.string().optional().describe('The SUI wallet address to analyze (optional if wallet is connected)')
     })
@@ -510,7 +510,7 @@ export class LangGraphAgent {
 
       // Check if this is a portfolio analysis request and we have a wallet address
       let processedMessage = message;
-      const isPortfolioRequest = /my\s+(portfolio|holdings|wallet|balance|tokens)|analyze.*my|show.*my.*wallet|my.*wallet/i.test(message);
+      const isPortfolioRequest = /my\s+(portfolio|holdings|wallet|balance|tokens|assets|positions|crypto|coins|net\s*worth|value)|analyze.*my|show.*my|check.*my|view.*my|display.*my|what.*do.*i.*have|what.*in.*my.*wallet|wallet.*analysis|portfolio.*analysis|portfolio.*value|wallet.*balance|token.*balance|sui.*balance/i.test(message);
 
       if (isPortfolioRequest && callbacks?.walletAddress) {
         // Automatically inject wallet address for portfolio analysis
