@@ -16,7 +16,7 @@ export function Providers({ children }: ProvidersProps) {
       <JotaiProvider>
         {children}
         <ToastProvider />
-        {/* <AlertSystem /> */}
+        <AlertSystem />
       </JotaiProvider>
     </SuiProvider>
   )

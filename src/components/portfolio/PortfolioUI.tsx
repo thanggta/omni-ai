@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { PortfolioUIData } from '@/src/lib/utils/portfolio-action-parser';
+import { LPInfo } from './LPInfo';
 
 // Re-export types for convenience
 export interface TokenHolding {
@@ -159,9 +160,10 @@ export function PortfolioUI({ data }: PortfolioUIProps = {}) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
-      {/* Net Worth Section */}
-      <Card className="p-6">
+    <>
+      <div className="w-full max-w-5xl mx-auto p-6 space-y-6">
+        {/* Net Worth Section */}
+        <Card className="p-6">
         <div className="flex justify-between items-start mb-6">
           <div>
             <h2 className="text-sm font-medium text-muted-foreground mb-1">Net Worth</h2>
@@ -425,6 +427,10 @@ export function PortfolioUI({ data }: PortfolioUIProps = {}) {
           ))}
         </div>
       </Card>
-    </div>
+      </div>
+
+      {/* LP Info Component - Display below Portfolio UI */}
+      {data?.lpData && <LPInfo data={data.lpData} />}
+    </>
   );
 }

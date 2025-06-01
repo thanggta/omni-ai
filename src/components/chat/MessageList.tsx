@@ -27,7 +27,7 @@ export function MessageList() {
 
     debounceTimeoutRef.current = setTimeout(() => {
       scrollToBottom();
-    }, 300); // 300ms debounce delay
+    }, 200); // 200ms debounce delay
   }, []);
 
   useEffect(() => {

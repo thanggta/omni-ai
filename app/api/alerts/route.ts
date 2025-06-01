@@ -16,17 +16,16 @@ You will receive UNFILTERED Twitter data. Your job is to intelligently:
 
 INTELLIGENT FILTERING (you decide what's relevant):
 - SUI ecosystem content (direct mentions, indirect implications)
+- Urgent alerts for trading and investing
 - Trading/investment signals and opportunities
 - Market-moving announcements and news
 - Technical developments and protocol updates
-- Community sentiment and viral content
 - Price movements, predictions, and analysis
-- Urgent alerts for trading and investing
 
 SMART RANKING FACTORS (you evaluate):
+- Information actionability for traders
 - Content uniqueness and exclusivity
 - Market impact potential and timing
-- Information actionability for traders
 
 ALERT CATEGORIES:
 - breaking_news: Major protocol updates, partnerships, listings, market-moving announcements
@@ -72,7 +71,7 @@ export async function GET(request: NextRequest) {
     console.log('🚨 Starting alert detection...');
 
     // #TODO-24.3: Fetch ALL recent Twitter posts for AI analysis
-    const twitterResult = await twitterService.fetchTrendingPosts(100); // Get more posts for AI to analyze
+    const twitterResult = await twitterService.fetchTrendingPosts(20); // Get more posts for AI to analyze
 
     if (!twitterResult.success || !twitterResult.data) {
       return NextResponse.json({
@@ -87,7 +86,7 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Fetched ${posts.length} raw Twitter posts for AI analysis...`);
 
     // #TODO-24.4: Filter posts from last 1 hour (let AI handle further filtering)
-    const oneHourAgo = new Date(Date.now() - 60 * 1000);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentPosts = posts.filter((post: TwitterPost) => {
       const postDate = new Date(post.createdAt);
       return postDate > oneHourAgo;
@@ -187,84 +186,6 @@ export async function GET(request: NextRequest) {
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
       console.error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
-
-      // Try X.AI as fallback if available
-      if (API_CONFIG.XAI_API.API_KEY) {
-        console.log('Trying X.AI as fallback...');
-        try {
-          const xaiResponse = await fetch(`${API_CONFIG.XAI_API.BASE_URL}/chat/completions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${API_CONFIG.XAI_API.API_KEY}`
-            },
-            body: JSON.stringify({
-              model: API_CONFIG.XAI_API.MODELS.GROK_BETA,
-              messages: [
-                {
-                  role: 'system',
-                  content: ALERT_DETECTION_PROMPT
-                },
-                {
-                  role: 'user',
-                  content: `Analyze these RAW, UNFILTERED Twitter posts. Apply your intelligent filtering and ranking to identify important SUI alerts:\n\nTotal posts to analyze: ${postsForAnalysis.length}\n\n${JSON.stringify(postsForAnalysis, null, 2)}`
-                }
-              ],
-              temperature: 0.3,
-              max_tokens: 2000
-            })
-          });
-
-          if (xaiResponse.ok) {
-            const xaiResult = await xaiResponse.json();
-            const xaiContent = xaiResult.choices[0]?.message?.content;
-
-            if (xaiContent) {
-              // Process X.AI response same as OpenAI
-              let alertsFromAI: any[] = [];
-              try {
-                alertsFromAI = JSON.parse(xaiContent);
-              } catch (parseError) {
-                console.error('Failed to parse X.AI response:', parseError);
-                alertsFromAI = [];
-              }
-
-              const alerts: AlertData[] = alertsFromAI.map((alert: any, index: number) => {
-                const relatedPost = recentPosts.find((post: TwitterPost) => post.id === alert.postId);
-
-                // Generate more deterministic ID based on content for better deduplication
-                const contentId = relatedPost?.id || `${alert.title}_${alert.type}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                const alertId = `xai_${contentId}_${Date.now()}_${index}`;
-
-                return {
-                  id: alertId,
-                  type: alert.type,
-                  severity: alert.severity,
-                  title: alert.title,
-                  description: alert.description,
-                  summary: alert.summary,
-                  url: relatedPost?.url,
-                  timestamp: new Date(),
-                  twitterPost: relatedPost,
-                  aiAnalysis: alert.aiAnalysis,
-                  relevanceScore: alert.relevanceScore
-                } as AlertData;
-              });
-
-              console.log(`✅ Generated ${alerts.length} alerts using X.AI fallback`);
-
-              return NextResponse.json({
-                success: true,
-                alerts,
-                timestamp: new Date(),
-              } as AlertResponse);
-            }
-          }
-        } catch (xaiError) {
-          console.error('X.AI fallback also failed:', xaiError);
-        }
-      }
-
       // Return empty alerts instead of failing completely
       return NextResponse.json({
         success: true,
@@ -294,13 +215,16 @@ export async function GET(request: NextRequest) {
       } as AlertResponse);
     }
 
-    // #TODO-24.8: Transform AI alerts to AlertData format
+    // #TODO-24.8: Transform AI alerts to AlertData format with deterministic IDs
     const alerts: AlertData[] = alertsFromAI.map((alert: any, index: number) => {
       const relatedPost = recentPosts.find((post: TwitterPost) => post.id === alert.postId);
 
-      // Generate more deterministic ID based on content for better deduplication
-      const contentId = relatedPost?.id || `${alert.title}_${alert.type}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      const alertId = `alert_${contentId}_${Date.now()}_${index}`;
+      // Generate deterministic ID based on content hash (no timestamp for deduplication)
+      const contentForId = `${alert.title}_${alert.type}_${alert.summary}_${relatedPost?.id || 'no_post'}`;
+      const contentHash = Buffer.from(contentForId.toLowerCase().replace(/[^a-zA-Z0-9]/g, '')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+      const alertId = `alert_${contentHash}`;
+
+      console.log(`🔍 Generated alert ID: ${alertId} for content: "${alert.title}"`);
 
       return {
         id: alertId,

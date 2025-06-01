@@ -218,6 +218,69 @@ export class CoinGeckoService {
     return `https://www.coingecko.com/en/coins/${tokenId}`;
   }
 
+  // #TODO-20.1: Generate chart URLs for tokens - UPDATED WITH PROPER EMBED FORMAT
+  generateChartUrls(token: TokenData): { chartUrl?: string; dexScreenerUrl?: string } {
+    // Generate DEX Screener URL if token has contract address on SUI
+    let tokenAddress: string | undefined;
+
+    // Check for SUI platform contract address
+    if (token.platform?.token_address && token.platform.id === 'sui-network') {
+      tokenAddress = token.platform.token_address;
+    }
+
+    // Fallback: Try to get token address using known token mappings
+    if (!tokenAddress) {
+      const knownTokenAddresses = this.getKnownSUITokenAddresses();
+      tokenAddress = knownTokenAddresses[token.id.toLowerCase()] || knownTokenAddresses[token.symbol.toLowerCase()];
+    }
+
+    // For SUI native token, use a special address if not found
+    if (token.symbol.toLowerCase() === 'sui' && !tokenAddress) {
+      // SUI native token might have a special representation on DEX Screener
+      tokenAddress = '0x2::sui::SUI';
+    }
+
+    // Build DEX Screener URL with embed parameters if we have a token address
+    let dexScreenerUrl: string | undefined;
+    if (tokenAddress) {
+      dexScreenerUrl = this.buildDexScreenerEmbedUrl(tokenAddress);
+    }
+
+    return {
+      chartUrl: dexScreenerUrl, // Prioritize DEX Screener as primary chart URL
+      dexScreenerUrl
+    };
+  }
+
+  // #TODO-20.3: Build DEX Screener embed URL with optimized parameters - NEW
+  private buildDexScreenerEmbedUrl(tokenAddress: string): string {
+    const baseUrl = `https://dexscreener.com/sui/${tokenAddress}`;
+    const embedParams = new URLSearchParams({
+      embed: '1',           // Enable embed mode for iframe
+      theme: 'dark',        // Dark theme to match our UI
+      trades: '0',          // Hide trades panel for cleaner chart focus
+      info: '0',           // Hide token info panel for more chart space
+      // Additional parameters for better embed experience
+      header: '0',         // Hide header for more chart space
+      chartLeftToolbar: '0', // Hide left toolbar for cleaner view
+      chartType: 'candles' // Use candlestick chart for better trading view
+    });
+
+    return `${baseUrl}?${embedParams.toString()}`;
+  }
+
+  // #TODO-20.2: Known SUI token addresses mapping - NEW
+  private getKnownSUITokenAddresses(): Record<string, string> {
+    return {
+      // Known SUI ecosystem token addresses (to be expanded as we discover more)
+      'sui': '0x2::sui::SUI',
+      'cetus': '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
+      'navx': '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2e04fd44e516781ac0a8e3e8e::navx::NAVX',
+      'deep': '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
+      // Add more as we discover them
+    };
+  }
+
   // #TODO-12.6: Get token price by contract address - NEW
   async getTokenPriceByContract(contractAddress: string, platformId: string = 'sui'): Promise<number | null> {
     try {

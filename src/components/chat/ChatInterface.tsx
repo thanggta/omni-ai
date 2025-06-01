@@ -10,6 +10,7 @@ import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { WelcomeScreen } from './WelcomeScreen';
 import { useAutoSwap } from '@/src/hooks/use-auto-swap';
+import { useAutoLPDeposit } from '@/src/hooks/use-auto-lp-deposit';
 import { useAutoPortfolio } from '@/src/hooks/use-auto-portfolio';
 import { SimpleWalletButton } from '@/src/components/wallet/SimpleWalletButton';
 
@@ -17,8 +18,9 @@ import { SimpleWalletButton } from '@/src/components/wallet/SimpleWalletButton';
 export function ChatInterface() {
   const [messages] = useAtom(chatMessagesAtom);
 
-  // Initialize auto-swap and auto-portfolio functionality
+  // Initialize auto-swap, auto-LP-deposit, and auto-portfolio functionality
   useAutoSwap();
+  useAutoLPDeposit();
   useAutoPortfolio();
 
   return (

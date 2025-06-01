@@ -142,7 +142,7 @@ export function useAutoSwap() {
       const successMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         content: `<div class="animate-slide-in-right">
-  <div class="bg-gradient-to-r from-darker-gray/90 to-darker-gray/70 backdrop-blur-sm p-5 rounded-2xl border border-neon-green/30 shadow-lg relative overflow-hidden group">
+  <div class="bg-gradient-to-r from-darker-gray/90 to-darker-gray/70 backdrop-blur-sm p-5 rounded-2xl border border-neon-green/30 shadow-lg relative overflow-hidden">
     <!-- Glow Effect -->
     <div class="absolute inset-0 bg-gradient-to-r from-neon-green/5 to-electric-cyan/5 opacity-70"></div>
     <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-neon-green to-electric-cyan"></div>
@@ -158,18 +158,14 @@ export function useAutoSwap() {
         <h3 class="text-neon-green font-bold text-lg mb-2">**Swap completed successfully!**</h3>
         <p class="text-gray-200 mb-4">Your tokens should appear in your wallet shortly.</p>
 
-        <a href="https://suivision.xyz/txblock/${result.digest}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-4 py-2 rounded-lg bg-darker-gray/60 border border-neon-green/30 text-neon-green text-sm hover:bg-darker-gray/80 hover:border-neon-green/50 transition-all duration-300 group/btn cursor-pointer">
-          <i class="fa-solid fa-external-link mr-2 group-hover/btn:translate-x-0.5 transition-transform duration-300"></i>
+        <a href="https://suivision.xyz/txblock/${result.digest}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-4 py-2 rounded-lg bg-darker-gray/60 border border-neon-green/30 text-neon-green text-sm cursor-pointer">
+          <i class="fa-solid fa-external-link mr-2"></i>
           View transaction on SUI Vision
-          <div class="absolute inset-0 bg-neon-green/10 opacity-0 group-hover/btn:opacity-100 rounded-lg transition-opacity duration-300"></div>
         </a>
       </div>
     </div>
 
-    <!-- Progress Bar Animation -->
-    <div class="absolute bottom-0 left-0 w-full h-1 bg-darker-gray/40">
-      <div class="h-full bg-gradient-to-r from-neon-green to-electric-cyan w-full origin-left animate-[shrink_5s_linear_forwards]"></div>
-    </div>
+
   </div>
 </div>`,
         role: 'assistant',
@@ -188,7 +184,7 @@ export function useAutoSwap() {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         content: `<div class="animate-slide-in-right">
-  <div class="bg-gradient-to-r from-darker-gray/90 to-darker-gray/70 backdrop-blur-sm p-5 rounded-2xl border border-neon-red/30 shadow-lg relative overflow-hidden group">
+  <div class="bg-gradient-to-r from-darker-gray/90 to-darker-gray/70 backdrop-blur-sm p-5 rounded-2xl border border-neon-red/30 shadow-lg relative overflow-hidden">
     <!-- Glow Effect -->
     <div class="absolute inset-0 bg-gradient-to-r from-neon-red/5 to-red-500/5 opacity-70"></div>
     <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-neon-red to-red-500"></div>

@@ -47,7 +47,7 @@ export const API_CONFIG = {
       FAST: process.env.OPENAI_MODEL || 'gpt-3.5-turbo'
     },
     PARAMETERS: {
-      TEMPERATURE: parseFloat(process.env.OPENAI_TEMPERATURE || '0.7'),
+      TEMPERATURE: parseFloat(process.env.OPENAI_TEMPERATURE || '0'),
       MAX_TOKENS: parseInt(process.env.OPENAI_MAX_TOKENS || '800'),
       TOP_P: 1,
       FREQUENCY_PENALTY: 0,
@@ -62,7 +62,7 @@ export const API_CONFIG = {
       GROK_BETA: 'grok-beta'
     },
     PARAMETERS: {
-      TEMPERATURE: 0.7,
+      TEMPERATURE: 0,
       MAX_TOKENS: 4000
     }
   },
@@ -97,7 +97,7 @@ export const APP_CONSTANTS = {
 If user message contains words like "swap", "exchange", "trade", "convert" with token amounts:
 → Use the swap_execution tool
 → Do NOT use market_intelligence tool
-→ IMPORTANT: After using swap_execution tool, DO NOT add any additional commentary or explanation. The tool response is complete and final.
+→ CRITICAL: After using swap_execution tool, IMMEDIATELY STOP. DO NOT add any commentary.
 
 Examples:
 - "swap 10 SUI to USDC" = use swap_execution (then STOP)
@@ -105,20 +105,38 @@ Examples:
 - "exchange 50 DEEP for SUI" = use swap_execution (then STOP)
 - "trade 100 SUI for USDT" = use swap_execution (then STOP)
 
+STEP 2: CHECK FOR LP DEPOSIT REQUESTS
+
+If user message contains "deposit" + ("LP" OR "vault"):
+→ Use the depositLP tool
+→ CRITICAL: After using depositLP tool, IMMEDIATELY STOP. DO NOT add any commentary.
+
+STEP 3: CHECK FOR PORTFOLIO REQUESTS
+
+If user message contains "my portfolio", "my wallet", "analyze my":
+→ Use the portfolio_analysis tool
+→ CRITICAL: After using portfolio_analysis tool, IMMEDIATELY STOP. DO NOT add any commentary.
+
 You are a helpful AI assistant for SUI cryptocurrency trading.
 
+TOOL SELECTION RULES:
+- For "trending tokens", "find trending", "top tokens", "market analysis" → Use market_intelligence tool
+- For "my portfolio", "my wallet", "my holdings", "analyze my" → Use portfolio_analysis tool
+- For "swap", "trade", "exchange", "convert" → Use swap_execution tool
+- For "deposit" + "LP/vault" → Use depositLP tool
+
 Available tools:
+- market_intelligence: For trending tokens, market analysis, price data (NOT for personal portfolios)
+- portfolio_analysis: For personal wallet analysis ONLY (NOT for trending tokens)
 - swap_execution: For token swaps/exchanges/trades
-- market_intelligence: For price analysis and market data
-- twitter_sentiment_analysis: For social media sentiment
-- portfolio_analysis: For wallet analysis
+- depositLP: For LP/vault deposits
+- getLPInfo: For LP position information
+- twitter_sentiment_analysis: For social sentiment analysis
 
 You can help with:
-- Market sentiment analysis
 - Trading insights and strategies
 - Technical analysis
 - General cryptocurrency knowledge
-- Real-time Twitter sentiment analysis
 - Live market data and trending tokens
 - Personal portfolio analysis
 - Token swapping and DEX transactions
@@ -176,12 +194,12 @@ FORMATTING RULES:
       - [DeepBook](https://www.coingecko.com/en/coins/deep)
 
       **PORTFOLIO ANALYSIS:**
-      When Portfolio Analysis Context is provided in your input:
-      - Return EXACTLY the data from the portfolio_analysis tool
-      - DO NOT add any additional commentary, recommendations, or thoughts
-      - DO NOT add summary text or explanations
-      - The tool response contains the complete portfolio UI component data
-      - Simply return the tool output as-is for frontend parsing
+      When the portfolio_analysis tool is used:
+      - The tool returns complete portfolio UI data
+      - Your final response should be EXACTLY: "Portfolio analysis complete."
+      - DO NOT add any commentary, summary, or interpretation
+      - DO NOT describe the portfolio contents or provide insights
+      - The UI component will handle all data display
 
       **CORRECT Example:**
       **Market Analysis**
@@ -221,10 +239,6 @@ FORMATTING RULES:
 
       Be helpful, informative, and provide actionable insights when possible.
       Always remind users that trading involves risks and to do their own research.`,
-      TWITTER_SENTIMENT: `You are an expert at analyzing social media sentiment for cryptocurrency markets.
-      Focus on identifying trends, sentiment shifts, and key influencer opinions.`,
-      MARKET_ANALYSIS: `You are a cryptocurrency market analyst specializing in technical and fundamental analysis.
-      Provide data-driven insights and risk assessments.`
     },
     TOOL_NAMES: {
       TWITTER_ANALYSIS: 'twitter_sentiment_analysis',

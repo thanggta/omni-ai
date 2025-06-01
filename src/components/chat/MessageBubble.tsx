@@ -8,8 +8,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CitationLink } from './CitationLink';
 import { cleanMessageContent } from '@/src/lib/utils/swap-action-parser';
+import { cleanLPDepositMessageContent } from '@/src/lib/utils/lp-deposit-action-parser';
 import { cleanPortfolioMessageContent, extractPortfolioUIData } from '@/src/lib/utils/portfolio-action-parser';
+import { cleanTrendingTokensMessageContent, extractTrendingTokensUIData } from '@/src/lib/utils/trending-tokens-action-parser';
 import { PortfolioUI } from '@/src/components/portfolio/PortfolioUI';
+import { TrendingTokensUI } from '@/src/components/portfolio/TrendingTokensUI';
 import { AnimatedMessageWrapper, removeAnimationClasses } from './AnimatedMessageWrapper';
 
 interface MessageBubbleProps {
@@ -20,11 +23,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   // Check if this message contains portfolio UI data
   const portfolioUIData = extractPortfolioUIData(message.content);
 
+  // Check if this message contains trending tokens UI data
+  const trendingTokensUIData = extractTrendingTokensUIData(message.content);
+
   // Clean message content to remove hidden action data
   let displayContent = message.content;
   if (message.role === 'assistant') {
     displayContent = cleanMessageContent(displayContent);
+    displayContent = cleanLPDepositMessageContent(displayContent);
     displayContent = cleanPortfolioMessageContent(displayContent);
+    displayContent = cleanTrendingTokensMessageContent(displayContent);
   }
 
   // Check if content contains HTML (for enhanced swap messages)
@@ -49,6 +57,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div className="flex justify-start w-full">
         <div className="w-full max-w-5xl">
           <PortfolioUI data={portfolioUIData.data} />
+        </div>
+      </div>
+    );
+  }
+
+  // If this message contains trending tokens UI data, render only the trending tokens component
+  if (trendingTokensUIData) {
+    return (
+      <div className="flex justify-start w-full">
+        <div className="w-full max-w-6xl">
+          <TrendingTokensUI
+            data={trendingTokensUIData}
+            title="SUI Ecosystem Trending Tokens"
+          />
         </div>
       </div>
     );

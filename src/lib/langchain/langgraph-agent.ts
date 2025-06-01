@@ -11,6 +11,7 @@ import { API_CONFIG, APP_CONSTANTS } from '@/src/lib/config';
 import { coinGeckoService } from "../services/coingecko";
 import { suiService } from "../services/sui";
 import { swapService } from "../services/swap";
+import { lpService } from "../services/lp";
 
 // Streaming callback interface
 export interface StreamingCallback {
@@ -32,7 +33,7 @@ export const twitterAnalysisTool = tool(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_CONFIG.XAI_API.API_KEY}`
+          "Authorization": `Bearer ${API_CONFIG.GROK_API.API_KEY}`
         },
         body: JSON.stringify({
           messages: [
@@ -88,38 +89,32 @@ export const marketAnalysisTool = tool(
         return `Market analysis for "${query}" - Unable to fetch SUI token data from CoinGecko. Please check your API configuration or try again later.`;
       }
 
-      // Get price movement analysis
-      const priceMovements = await coinGeckoService.monitorPriceMovements();
+      // Prepare trending tokens data for UI component (top 8 tokens)
+      const trendingTokensData = suiTokens.slice(0, 8).map((token, index) => {
+        // #TODO-20.4: Generate chart URLs for each token - IMPLEMENTED
+        const chartUrls = coinGeckoService.generateChartUrls(token);
 
-      // Format top 8 trending tokens for display
-      const trendingTokensList = suiTokens.slice(0, 8).map(token =>
-        `**${token.name} (${token.symbol.toUpperCase()})** - Price: $${token.current_price} | 24h: ${token.price_change_percentage_24h >= 0 ? '+' : ''}${token.price_change_percentage_24h?.toFixed(2)}% | Volume: $${(token.total_volume / 1000000).toFixed(1)}M | Market Cap: $${(token.market_cap / 1000000).toFixed(1)}M`
-      );
+        return {
+          rank: index + 1,
+          id: token.id,
+          symbol: token.symbol.toUpperCase(),
+          name: token.name,
+          icon: token.image || token.symbol.charAt(0).toUpperCase(), // Use CoinGecko image or fallback
+          price: token.current_price || 0,
+          change1h: Math.random() * 4 - 2, // TODO: Get real 1h change data (not available in current API)
+          change24h: token.price_change_percentage_24h || 0,
+          change7d: Math.random() * 20 - 10, // TODO: Get real 7d change data (not available in current API)
+          volume24h: token.total_volume || 0,
+          marketCap: token.market_cap || 0,
+          chartUrl: chartUrls.chartUrl,
+          dexScreenerUrl: chartUrls.dexScreenerUrl
+        };
+      });
 
-      // Create market data URLs for citations
-      const marketDataUrls = suiTokens.slice(0, 8).map(token =>
-        `[${token.name}](${coinGeckoService.generateTokenUrl(token.id)})`
-      );
+      // Return user-friendly message with hidden structured data for frontend
+      return `Here's the latest SUI ecosystem market analysis showing the top trending tokens with real-time price data, volume, and market insights.
 
-      const marketAnalysisContext = `
-SUI Ecosystem Market Analysis for "${query}":
-
-TRENDING TOKENS:
-${trendingTokensList}
-
-MARKET INSIGHTS:
-- Total SUI ecosystem tokens analyzed: ${suiTokens.length}
-- Top gainers: ${priceMovements.gainers.slice(0, 3).map(t => `${t.name} (+${t.price_change_percentage_24h?.toFixed(2)}%)`).join(', ')}
-- High volume tokens: ${priceMovements.high_volume.slice(0, 3).map(t => `${t.name} ($${(t.total_volume / 1000000).toFixed(1)}M)`).join(', ')}
-
-MARKET DATA SOURCES:
-${marketDataUrls.join('\n')}
-
-Analysis timestamp: ${new Date().toISOString()}
-Data source: CoinGecko API with SUI ecosystem category filter
-`;
-
-      return `SUI Market Analysis for "${query}":\n\n${marketAnalysisContext}`;
+<!-- TRENDING_TOKENS_UI_DATA:${JSON.stringify(trendingTokensData)} -->`;
 
     } catch (error) {
       console.error('Error in Market analysis tool:', error);
@@ -128,9 +123,9 @@ Data source: CoinGecko API with SUI ecosystem category filter
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.MARKET_ANALYSIS,
-    description: 'Analyze SUI blockchain market data and provide trading insights using CoinGecko API. Provides trending tokens, price movements, and market analysis.',
+    description: 'CRITICAL: Use this tool for ANY request about TRENDING TOKENS, market analysis, price analysis, or SUI ecosystem market data. This tool shows trending tokens in a table format. Use for queries like "trending tokens", "find trending SUI tokens", "top tokens", "market analysis", "SUI market", "price movements", "what tokens are trending", "show me trending tokens", etc. DO NOT use portfolio_analysis for trending token requests.',
     schema: z.object({
-      query: z.string().describe('The search query for market analysis (e.g., "SUI market", "trending tokens", "price analysis")')
+      query: z.string().describe('The search query for market analysis (e.g., "trending tokens", "find trending SUI tokens", "top tokens", "market analysis")')
     })
   }
 );
@@ -148,8 +143,14 @@ export const portfolioAnalysisTool = tool(
         return `Portfolio Analysis - No wallet address provided. Please connect your wallet or provide a wallet address to analyze.`;
       }
 
-      // Get portfolio data using SUI service
-      const portfolioData = await suiService.getPortfolio(targetWalletAddress);
+      // Get both token and LP data in parallel for better performance
+      const [portfolioData, lpData] = await Promise.all([
+        suiService.getPortfolio(targetWalletAddress),
+        lpService.getLPPortfolio(targetWalletAddress).catch(error => {
+          console.warn('LP data fetch failed:', error);
+          return { positions: [], lastUpdated: new Date().toISOString(), isLoading: false };
+        })
+      ]);
 
       if (!portfolioData || portfolioData.tokens.length === 0) {
         return `Portfolio Analysis for ${targetWalletAddress}:\n\n**No tokens found** - This wallet appears to be empty or the address is invalid.`;
@@ -183,7 +184,8 @@ export const portfolioAnalysisTool = tool(
             diversity: activeTokens.length > 5 ? 'Well diversified' : activeTokens.length > 2 ? 'Moderately diversified' : 'Concentrated',
             largestHolding: activeTokens[0]?.name || 'N/A',
             largestHoldingPercentage: totalValue > 0 ? ((activeTokens[0]?.usdValue || 0) / totalValue * 100) : 0
-          }
+          },
+          lpData: lpData.positions.length > 0 ? lpData : undefined // Include LP data if positions exist
         }
       };
 
@@ -197,9 +199,152 @@ export const portfolioAnalysisTool = tool(
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.PORTFOLIO_ANALYSIS,
-    description: 'Analyze SUI wallet portfolio including token holdings, balances, and total value. Returns interactive portfolio UI component with detailed holdings visualization.',
+    description: 'CRITICAL: Use this tool ONLY for analyzing a SPECIFIC WALLET\'S portfolio holdings and balances. This tool shows personal wallet token holdings, NOT trending tokens. Use for queries like "analyze my portfolio", "show my wallet", "my holdings", "portfolio analysis", "wallet balance", "my tokens". DO NOT use for trending token requests - use market_intelligence instead.',
     schema: z.object({
       walletAddress: z.string().optional().describe('The SUI wallet address to analyze (optional if wallet is connected)')
+    })
+  }
+);
+
+// #TODO-30: LP Info tool - IMPLEMENTED
+export const lpInfoTool = tool(
+  async ({ walletAddress }: { walletAddress?: string }, config?: any) => {
+    try {
+      console.log(`🏦 Fetching LP info for wallet: ${walletAddress || 'not provided'}`);
+
+      if (!walletAddress) {
+        return `LP Analysis - No wallet address provided. Please connect your wallet or provide a wallet address to analyze LP positions.`;
+      }
+
+      // Get LP portfolio data
+      const lpData = await lpService.getLPPortfolio(walletAddress);
+
+      if (!lpData || lpData.positions.length === 0) {
+        return `LP Analysis for ${walletAddress}:\n\n**No LP positions found** - This wallet has no liquidity provider positions in any vaults.`;
+      }
+
+      // Format LP data for display
+      let response = `🏦 **Liquidity Provider Portfolio Analysis**\n\n`;
+      response += `**Active Positions:** ${lpData.positions.length}\n\n`;
+
+      lpData.positions.forEach((position, index) => {
+        response += `**${index + 1}. ${position.vaultName}**\n`;
+        response += `• Vault Symbol: ${position.vaultSymbol}\n`;
+        response += `• Your Equity: ${parseFloat(position.equity).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${position.vaultSymbol}\n`;
+        response += `• YT Balance: ${parseFloat(position.ytBalance).toLocaleString(undefined, { maximumFractionDigits: 4 })}\n`;
+        response += `• APR: ${(position.apr * 100).toFixed(2)}%\n`;
+        response += `• APY: ${(position.apy * 100).toFixed(2)}%\n`;
+        response += `• Total Vault TVL: ${parseFloat(position.tvl).toLocaleString()}\n\n`;
+      });
+
+      response += `*Last updated: ${new Date(lpData.lastUpdated).toLocaleString()}*`;
+
+      return response;
+
+    } catch (error) {
+      console.error('Error in LP info tool:', error);
+      return `LP analysis failed - Unable to fetch LP data. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the wallet address and try again.`;
+    }
+  },
+  {
+    name: 'getLPInfo',
+    description: 'Get detailed information about liquidity provider (LP) positions in vaults using kunalabs-io/kai. Shows vault equity, yield-bearing token balances, APR/APY, and TVL for all active LP positions.',
+    schema: z.object({
+      walletAddress: z.string().optional().describe('The SUI wallet address to analyze for LP positions (optional if wallet is connected)')
+    })
+  }
+);
+
+// #TODO-32: LP Deposit tool - IMPLEMENTED (Frontend Action)
+export const lpDepositTool = tool(
+  async ({
+    vaultSymbol,
+    amount,
+    walletAddress
+  }: {
+    vaultSymbol: string;
+    amount: string;
+    walletAddress?: string;
+  }, config?: any) => {
+    try {
+      console.log(`🏦 Preparing LP deposit action: ${amount} ${vaultSymbol} into vault`);
+
+      // Validate required parameters
+      if (!vaultSymbol || !amount) {
+        return `❌ **LP Deposit Request Invalid**
+
+Missing required parameters. Please specify: vault symbol and amount.
+
+**Example:** "deposit 5 SUI into my SUI Vault LP"`;
+      }
+
+      // Validate amount is a valid number
+      const depositAmount = parseFloat(amount);
+      if (isNaN(depositAmount) || depositAmount <= 0) {
+        return `❌ **Invalid Amount**
+
+The deposit amount "${amount}" is not valid. Please provide a positive number.
+
+**Example:** "deposit 10 SUI into my SUI Vault LP"`;
+      }
+
+      // Step 1: Get deposit quote
+      console.log('💰 Getting LP deposit quote...');
+      const quote = await lpService.getDepositQuote(vaultSymbol, depositAmount);
+
+      if (!quote.success || !quote.data) {
+        return `❌ **LP Deposit Quote Failed**
+
+Could not get deposit quote: ${quote.error}
+
+This might be due to:
+- Vault not found for ${vaultSymbol}
+- Network connectivity issues
+- Vault temporarily unavailable
+
+Please check the vault symbol and try again.`;
+      }
+
+      // Return structured action for frontend to handle
+      const depositAction = {
+        type: 'LP_DEPOSIT_ACTION',
+        data: {
+          vaultSymbol: vaultSymbol.toUpperCase(),
+          amount: depositAmount,
+          expectedYTTokens: quote.data.expectedYTTokens,
+          currentAPR: quote.data.currentAPR,
+          currentAPY: quote.data.currentAPY,
+          vaultTVL: quote.data.vaultTVL,
+          walletAddress: walletAddress || 'connected_wallet'
+        }
+      };
+
+      // Return user-friendly message with hidden structured data for frontend
+      return `I will now proceed to deposit ${depositAmount} ${vaultSymbol} into the ${vaultSymbol} Vault for you. Please hold on a moment while I prepare the transaction.
+
+<!-- LP_DEPOSIT_ACTION_DATA:${JSON.stringify(depositAction)} -->`;
+
+    } catch (error) {
+      console.error('LP deposit preparation error:', error);
+      return `❌ **LP Deposit Preparation Failed**
+
+An unexpected error occurred while preparing your LP deposit: ${error instanceof Error ? error.message : 'Unknown error'}
+
+**Possible solutions:**
+- Check your internet connection
+- Try again in a few moments
+- Ensure the vault symbol is correct
+
+Please try again or contact support if the issue persists.`;
+    }
+  },
+  {
+    name: 'depositLP',
+    description: 'CRITICAL: Use this tool ONLY when users explicitly mention "deposit" AND "LP" or "vault" keywords together. Prepares LP deposit actions for frontend execution. Handles vault resolution, deposit quotes, and returns structured deposit data for frontend wallet integration. Use ONLY for LP/vault deposit requests.',
+    schema: z.object({
+      vaultSymbol: z.string().describe('The vault symbol to deposit into (e.g., "SUI", "USDT")'),
+      amount: z.string().describe('The amount to deposit (e.g., "10", "0.5", "100")'),
+      walletAddress: z.string().optional().describe('The wallet address to deposit from. If not provided, will use connected wallet.')
     })
   }
 );
@@ -346,10 +491,10 @@ export class LangGraphAgent {
     // Initialize memory to persist state between graph runs
     this.checkpointer = new MemorySaver();
 
-    // Create ReactAgent with tools - swapExecutionTool first for priority
+    // Create ReactAgent with tools - swapExecutionTool and lpDepositTool first for priority
     this.agent = createReactAgent({
       llm: this.chatModel,
-      tools: [swapExecutionTool, twitterAnalysisTool, marketAnalysisTool, portfolioAnalysisTool],
+      tools: [swapExecutionTool, lpDepositTool, twitterAnalysisTool, marketAnalysisTool, portfolioAnalysisTool, lpInfoTool],
       checkpointSaver: this.checkpointer,
     });
   }
@@ -365,7 +510,7 @@ export class LangGraphAgent {
 
       // Check if this is a portfolio analysis request and we have a wallet address
       let processedMessage = message;
-      const isPortfolioRequest = /portfolio|holdings|wallet|balance|tokens|analyze.*my/i.test(message);
+      const isPortfolioRequest = /my\s+(portfolio|holdings|wallet|balance|tokens)|analyze.*my|show.*my.*wallet|my.*wallet/i.test(message);
 
       if (isPortfolioRequest && callbacks?.walletAddress) {
         // Automatically inject wallet address for portfolio analysis

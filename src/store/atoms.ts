@@ -286,6 +286,8 @@ export interface AlertSystemState {
   showModal: boolean
   notifiedAlerts: Set<string> // Track which alerts have been notified to prevent spam
   seenContentHashes: Set<string> // Track content hashes to prevent duplicate content
+  unreadAlerts: Set<string> // Track unread alerts for button display
+  hasUnreadAlerts: boolean // Quick flag for unread alerts
   settings: {
     enabled: boolean
     pollInterval: number
@@ -302,6 +304,8 @@ export const alertSystemAtom = atom<AlertSystemState>({
   showModal: false,
   notifiedAlerts: new Set<string>(),
   seenContentHashes: new Set<string>(),
+  unreadAlerts: new Set<string>(),
+  hasUnreadAlerts: false,
   settings: {
     enabled: true,
     pollInterval: 3000, // 3 seconds
@@ -310,11 +314,20 @@ export const alertSystemAtom = atom<AlertSystemState>({
   }
 })
 
-// #TODO-24: Helper function to generate content hash for deduplication
+// #TODO-24: Helper function to generate content hash for deduplication (matches API logic)
 const generateContentHash = (alert: AlertData): string => {
-  // Create a hash based on title and key content to detect similar alerts
-  const content = `${alert.title.toLowerCase()}_${alert.type}_${alert.summary.toLowerCase()}`
-  return btoa(content).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)
+  // Create a hash based on title, type, summary, and post ID to detect identical alerts
+  const postId = alert.twitterPost?.id || 'no_post';
+  const content = `${alert.title}_${alert.type}_${alert.summary}_${postId}`;
+  const cleanContent = content.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+
+  // Use same logic as API for consistency
+  try {
+    return Buffer.from(cleanContent).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+  } catch {
+    // Fallback for browser environments
+    return btoa(cleanContent).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+  }
 }
 
 // #TODO-24: Enhanced add alert atom with deduplication
@@ -327,16 +340,22 @@ export const addAlertAtom = atom(
     const contentHash = generateContentHash(alert)
     alert.contentHash = contentHash
 
+    console.log(`🔍 Processing alert: "${alert.title}" (ID: ${alert.id}, Hash: ${contentHash})`)
+
     // Check if we've already seen this content recently
     if (currentState.seenContentHashes.has(contentHash)) {
-      console.log(`🔄 Skipping duplicate alert: ${alert.title}`)
+      console.log(`🔄 DUPLICATE CONTENT - Skipping alert with hash: ${contentHash}`)
+      console.log(`   Title: "${alert.title}"`)
+      console.log(`   Existing hashes: [${Array.from(currentState.seenContentHashes).join(', ')}]`)
       return
     }
 
     // Check if alert already exists by ID
     const existingAlert = currentState.alerts.find(a => a.id === alert.id)
     if (existingAlert) {
-      console.log(`🔄 Skipping existing alert: ${alert.title}`)
+      console.log(`🔄 DUPLICATE ID - Skipping alert with ID: ${alert.id}`)
+      console.log(`   Title: "${alert.title}"`)
+      console.log(`   Existing alert: "${existingAlert.title}"`)
       return
     }
 
@@ -349,13 +368,26 @@ export const addAlertAtom = atom(
     const recentAlerts = currentState.alerts.filter(a => a.timestamp > cutoffTime)
     const recentHashes = new Set(recentAlerts.map(a => a.contentHash).filter((hash): hash is string => Boolean(hash)))
 
+    // Add the new hash to recent hashes
+    recentHashes.add(contentHash)
+
+    // Add to unread alerts
+    const newUnreadAlerts = new Set(currentState.unreadAlerts)
+    newUnreadAlerts.add(alert.id)
+
     set(alertSystemAtom, {
       ...currentState,
       alerts: [alert, ...currentState.alerts].slice(0, 50), // Keep only last 50 alerts
-      seenContentHashes: recentHashes
+      seenContentHashes: recentHashes,
+      unreadAlerts: newUnreadAlerts,
+      hasUnreadAlerts: true
     })
 
-    console.log(`✅ Added new alert: ${alert.title}`)
+    console.log(`✅ ADDED NEW ALERT: "${alert.title}"`)
+    console.log(`   ID: ${alert.id}`)
+    console.log(`   Hash: ${contentHash}`)
+    console.log(`   Total alerts: ${currentState.alerts.length + 1}`)
+    console.log(`   Tracked hashes: ${recentHashes.size}`)
   }
 )
 
@@ -365,9 +397,13 @@ export const notifyAlertAtom = atom(
   (get, set, alert: AlertData) => {
     const currentState = get(alertSystemAtom)
 
+    console.log(`🔔 Checking notification for: "${alert.title}" (ID: ${alert.id})`)
+
     // Check if we've already notified about this alert
     if (currentState.notifiedAlerts.has(alert.id)) {
-      console.log(`🔕 Skipping notification for already notified alert: ${alert.title}`)
+      console.log(`🔕 ALREADY NOTIFIED - Skipping notification for alert ID: ${alert.id}`)
+      console.log(`   Title: "${alert.title}"`)
+      console.log(`   Notified alerts: [${Array.from(currentState.notifiedAlerts).join(', ')}]`)
       return false
     }
 
@@ -377,7 +413,7 @@ export const notifyAlertAtom = atom(
     const thresholdLevel = severityLevels[currentState.settings.severityThreshold]
 
     if (alertLevel < thresholdLevel) {
-      console.log(`🔕 Alert below severity threshold: ${alert.severity} < ${currentState.settings.severityThreshold}`)
+      console.log(`🔕 BELOW THRESHOLD - Alert severity ${alert.severity} (${alertLevel}) < threshold ${currentState.settings.severityThreshold} (${thresholdLevel})`)
       return false
     }
 
@@ -390,27 +426,38 @@ export const notifyAlertAtom = atom(
     const recentAlerts = currentState.alerts.filter(a => a.timestamp > cutoffTime)
     const recentNotifications = new Set(recentAlerts.map(a => a.id))
 
-    // Keep only recent notifications
+    // Keep only recent notifications and add the new one
     const cleanedNotifications = new Set([...newNotifiedAlerts].filter(id => recentNotifications.has(id)))
+    cleanedNotifications.add(alert.id)
 
     set(alertSystemAtom, {
       ...currentState,
       notifiedAlerts: cleanedNotifications
     })
 
-    console.log(`🔔 Notification allowed for alert: ${alert.title}`)
+    console.log(`🔔 NOTIFICATION APPROVED: "${alert.title}"`)
+    console.log(`   ID: ${alert.id}`)
+    console.log(`   Severity: ${alert.severity} (${alertLevel})`)
+    console.log(`   Total notified: ${cleanedNotifications.size}`)
     return true
   }
 )
 
 export const showAlertModalAtom = atom(
-  null,
+  true,
   (get, set, alert: AlertData) => {
     const currentState = get(alertSystemAtom)
+
+    // Mark this alert as read when showing modal
+    const newUnreadAlerts = new Set(currentState.unreadAlerts)
+    newUnreadAlerts.delete(alert.id)
+
     set(alertSystemAtom, {
       ...currentState,
       currentAlert: alert,
-      showModal: true
+      showModal: true,
+      unreadAlerts: newUnreadAlerts,
+      hasUnreadAlerts: newUnreadAlerts.size > 0
     })
   }
 )
@@ -461,7 +508,116 @@ export const clearAlertsAtom = atom(
       ...currentState,
       alerts: [],
       notifiedAlerts: new Set<string>(),
-      seenContentHashes: new Set<string>()
+      seenContentHashes: new Set<string>(),
+      unreadAlerts: new Set<string>(),
+      hasUnreadAlerts: false
     })
+  }
+)
+
+// #TODO-24: Mark alerts as read atom
+export const markAlertsAsReadAtom = atom(
+  null,
+  (get, set, alertIds?: string[]) => {
+    const currentState = get(alertSystemAtom)
+
+    if (alertIds) {
+      // Mark specific alerts as read
+      const newUnreadAlerts = new Set(currentState.unreadAlerts)
+      alertIds.forEach(id => newUnreadAlerts.delete(id))
+
+      set(alertSystemAtom, {
+        ...currentState,
+        unreadAlerts: newUnreadAlerts,
+        hasUnreadAlerts: newUnreadAlerts.size > 0
+      })
+    } else {
+      // Mark all alerts as read
+      set(alertSystemAtom, {
+        ...currentState,
+        unreadAlerts: new Set<string>(),
+        hasUnreadAlerts: false
+      })
+    }
+  }
+)
+
+// #TODO-24: Manual fetch alerts atom (for button trigger)
+export const fetchAlertsManuallyAtom = atom(
+  null,
+  async (get, set) => {
+    try {
+      console.log('🔄 Manual alert fetch triggered...');
+
+      // Add timestamp to prevent any browser caching
+      const timestamp = Date.now();
+      const response = await fetch(`/api/alerts?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      const data = await response.json();
+
+      if (data.success && data.alerts.length > 0) {
+        console.log(`📊 Processing ${data.alerts.length} manual alerts...`);
+
+        // Process new alerts using the existing logic
+        data.alerts.forEach((alert: any) => {
+          const currentState = get(alertSystemAtom);
+
+          // Generate content hash for deduplication
+          const contentHash = generateContentHash(alert);
+          alert.contentHash = contentHash;
+
+          // Check if we've already seen this content recently
+          if (currentState.seenContentHashes.has(contentHash)) {
+            console.log(`🔄 DUPLICATE CONTENT - Skipping alert with hash: ${contentHash}`);
+            return;
+          }
+
+          // Check if alert already exists by ID
+          const existingAlert = currentState.alerts.find(a => a.id === alert.id);
+          if (existingAlert) {
+            console.log(`🔄 DUPLICATE ID - Skipping alert with ID: ${alert.id}`);
+            return;
+          }
+
+          // Add to state with deduplication tracking
+          const newSeenHashes = new Set(currentState.seenContentHashes);
+          newSeenHashes.add(contentHash);
+
+          // Clean up old hashes
+          const cutoffTime = new Date(Date.now() - currentState.settings.deduplicationWindow * 60 * 1000);
+          const recentAlerts = currentState.alerts.filter(a => a.timestamp > cutoffTime);
+          const recentHashes = new Set(recentAlerts.map(a => a.contentHash).filter((hash): hash is string => Boolean(hash)));
+          recentHashes.add(contentHash);
+
+          // Add to unread alerts
+          const newUnreadAlerts = new Set(currentState.unreadAlerts);
+          newUnreadAlerts.add(alert.id);
+
+          set(alertSystemAtom, {
+            ...currentState,
+            alerts: [alert, ...currentState.alerts].slice(0, 50),
+            seenContentHashes: recentHashes,
+            unreadAlerts: newUnreadAlerts,
+            hasUnreadAlerts: true
+          });
+
+          console.log(`✅ ADDED NEW ALERT: "${alert.title}"`);
+        });
+
+        return { success: true, count: data.alerts.length };
+      } else {
+        console.log('✅ Manual check complete - no new alerts');
+        return { success: true, count: 0 };
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch alerts manually:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 )

@@ -22,8 +22,8 @@ export class TwitterService {
     try {
       console.log(`🔄 Fetching real-time trending posts (max: ${maxResults})...`);
 
-      const query = '"SUI trending" or "SUI urgent"';
-      const url = `${this.baseUrl}${API_CONFIG.TWITTER_API.ENDPOINTS.ADVANCED_SEARCH}?queryType=Top&query=${encodeURIComponent(query)}&max_results=${maxResults}`;
+      const query = 'SUI urgent';
+      const url = `${this.baseUrl}${API_CONFIG.TWITTER_API.ENDPOINTS.ADVANCED_SEARCH}?queryType=Top&query=${query}&max_results=${maxResults}`;
 
       const options = {
         method: 'GET',

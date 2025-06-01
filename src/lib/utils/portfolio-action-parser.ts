@@ -18,6 +18,23 @@ export interface PortfolioInsights {
   largestHoldingPercentage: number;
 }
 
+// #TODO-29: Add LP data interfaces to portfolio parser
+export interface LPPosition {
+  vaultSymbol: string;
+  vaultName: string;
+  ytBalance: string;
+  equity: string;
+  apr: number;
+  apy: number;
+  tvl: string;
+}
+
+export interface LPData {
+  positions: LPPosition[];
+  lastUpdated: string;
+  isLoading: boolean;
+}
+
 export interface PortfolioUIData {
   type: 'PORTFOLIO_UI';
   data: {
@@ -28,6 +45,7 @@ export interface PortfolioUIData {
     holdings: TokenHolding[];
     analysisTimestamp: string;
     insights: PortfolioInsights;
+    lpData?: LPData; // Optional LP data
   };
 }
 

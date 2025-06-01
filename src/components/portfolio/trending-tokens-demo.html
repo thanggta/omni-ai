@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trending Tokens UI Demo</title>
+    <style>
+        /* Cyberpunk color palette */
+        :root {
+            --electric-cyan: #00FFFF;
+            --neon-blue: #00BFFF;
+            --vivid-purple: #FF00FF;
+            --magenta: #C71585;
+            --dark-gray: #1F1F1F;
+            --darker-gray: #2E2E2E;
+            --neon-green: #39FF14;
+            --hot-pink: #FF69B4;
+            --neon-red: #FF3333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--dark-gray) 0%, var(--darker-gray) 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(135deg, rgba(46, 46, 46, 0.95) 0%, rgba(31, 31, 31, 0.9) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(to right, var(--electric-cyan), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: #9CA3AF;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #D1D5DB;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: linear-gradient(to right, rgba(46, 46, 46, 0.5), rgba(31, 31, 31, 0.3));
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .table-row:hover {
+            background: rgba(0, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .rank-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .star {
+            color: #6B7280;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .star:hover {
+            color: var(--neon-blue);
+        }
+
+        .coin-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .coin-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 191, 255, 0.2));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            font-size: 1.125rem;
+        }
+
+        .coin-info h4 {
+            font-weight: 600;
+            color: white;
+        }
+
+        .coin-info p {
+            font-size: 0.875rem;
+            color: #9CA3AF;
+        }
+
+        .buy-badge {
+            margin-left: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid rgba(57, 255, 20, 0.5);
+            color: var(--neon-green);
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .buy-badge:hover {
+            background: rgba(57, 255, 20, 0.1);
+        }
+
+        .price-cell {
+            text-align: right;
+            font-weight: 600;
+            color: white;
+        }
+
+        .change-cell {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.25rem;
+            font-weight: 500;
+        }
+
+        .positive {
+            color: var(--neon-green);
+        }
+
+        .negative {
+            color: var(--neon-red);
+        }
+
+        .neutral {
+            color: #9CA3AF;
+        }
+
+        .volume-cell, .market-cap-cell {
+            text-align: right;
+            font-weight: 500;
+            color: #D1D5DB;
+        }
+
+        .demo-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(to right, var(--electric-cyan), var(--neon-blue), var(--vivid-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .demo-title p {
+            color: #9CA3AF;
+            font-size: 1.125rem;
+            max-width: 32rem;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="demo-title">
+            <h1>Trending Tokens UI</h1>
+            <p>A sleek, cyberpunk-styled trending tokens component with real-time market data visualization.</p>
+        </div>
+
+        <div class="card">
+            <div class="header">
+                <h2 class="title">Trending Tokens</h2>
+                <div class="subtitle">Real-time market data</div>
+            </div>
+
+            <div class="table-header">
+                <div>⭐ #</div>
+                <div>Coin</div>
+                <div>Price</div>
+                <div>1h</div>
+                <div>24h</div>
+                <div>7d</div>
+                <div>24h Volume</div>
+                <div>Market Cap</div>
+            </div>
+
+            <div class="table-row">
+                <div class="rank-cell">
+                    <span class="star">⭐</span>
+                    <span style="color: #9CA3AF; font-weight: 500;">7</span>
+                </div>
+                <div class="coin-cell">
+                    <div class="coin-icon">💵</div>
+                    <div class="coin-info">
+                        <h4>USDC</h4>
+                        <p>USDC</p>
+                    </div>
+                    <span class="buy-badge">Buy</span>
+                </div>
+                <div class="price-cell">$0.9998</div>
+                <div class="change-cell neutral">0.0%</div>
+                <div class="change-cell neutral">0.0%</div>
+                <div class="change-cell neutral">0.0%</div>
+                <div class="volume-cell">$4.92B</div>
+                <div class="market-cap-cell">$60.94B</div>
+            </div>
+
+            <div class="table-row">
+                <div class="rank-cell">
+                    <span class="star">⭐</span>
+                    <span style="color: #9CA3AF; font-weight: 500;">14</span>
+                </div>
+                <div class="coin-cell">
+                    <div class="coin-icon">🌊</div>
+                    <div class="coin-info">
+                        <h4>Sui</h4>
+                        <p>SUI</p>
+                    </div>
+                </div>
+                <div class="price-cell">$3.28</div>
+                <div class="change-cell positive">+0.8%</div>
+                <div class="change-cell positive">+4.3%</div>
+                <div class="change-cell negative">-9.6%</div>
+                <div class="volume-cell">$835M</div>
+                <div class="market-cap-cell">$10.95B</div>
+            </div>
+
+            <div class="table-row">
+                <div class="rank-cell">
+                    <span class="star">⭐</span>
+                    <span style="color: #9CA3AF; font-weight: 500;">946</span>
+                </div>
+                <div class="coin-cell">
+                    <div class="coin-icon">🧭</div>
+                    <div class="coin-info">
+                        <h4>NAVI Protocol</h4>
+                        <p>NAVX</p>
+                    </div>
+                </div>
+                <div class="price-cell">$0.0506</div>
+                <div class="change-cell positive">+0.5%</div>
+                <div class="change-cell neutral">0.0%</div>
+                <div class="change-cell negative">-12.1%</div>
+                <div class="volume-cell">$36M</div>
+                <div class="market-cap-cell">$29M</div>
+            </div>
+
+            <div class="table-row">
+                <div class="rank-cell">
+                    <span class="star">⭐</span>
+                    <span style="color: #9CA3AF; font-weight: 500;">465</span>
+                </div>
+                <div class="coin-cell">
+                    <div class="coin-icon">🐋</div>
+                    <div class="coin-info">
+                        <h4>Cetus Protocol</h4>
+                        <p>CETUS</p>
+                    </div>
+                </div>
+                <div class="price-cell">$0.1368</div>
+                <div class="change-cell negative">-0.1%</div>
+                <div class="change-cell positive">+3.0%</div>
+                <div class="change-cell negative">-14.3%</div>
+                <div class="volume-cell">$28M</div>
+                <div class="market-cap-cell">$99M</div>
+            </div>
+
+            <div class="table-row">
+                <div class="rank-cell">
+                    <span class="star">⭐</span>
+                    <span style="color: #9CA3AF; font-weight: 500;">133</span>
+                </div>
+                <div class="coin-cell">
+                    <div class="coin-icon">🦭</div>
+                    <div class="coin-info">
+                        <h4>Walrus</h4>
+                        <p>WAL</p>
+                    </div>
+                </div>
+                <div class="price-cell">$0.5016</div>
+                <div class="change-cell positive">+0.9%</div>
+                <div class="change-cell positive">+0.3%</div>
+                <div class="change-cell negative">-6.8%</div>
+                <div class="volume-cell">$22M</div>
+                <div class="market-cap-cell">$660M</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
