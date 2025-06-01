@@ -199,7 +199,7 @@ export const portfolioAnalysisTool = tool(
   },
   {
     name: APP_CONSTANTS.LANGCHAIN.TOOL_NAMES.PORTFOLIO_ANALYSIS,
-    description: 'CRITICAL: MANDATORY tool for ANY portfolio/wallet/holdings request. This tool fetches REAL on-chain data and renders CUSTOM UI components. Use IMMEDIATELY for: "analyze my portfolio", "show my wallet", "my holdings", "my balance", "my tokens", "what do I have", "wallet analysis", "my assets", "my positions", "portfolio value", "my net worth", "wallet balance", "token balance", "my SUI balance", "what\'s in my wallet", "check my wallet", "view my portfolio", "display my holdings". NEVER provide generic portfolio advice - ALWAYS use this tool first to fetch real data and render custom UI. DO NOT use for trending token requests - use market_intelligence instead.',
+    description: 'CRITICAL: MANDATORY tool for ANY portfolio/wallet/holdings request. EXECUTE FRESH EVERY TIME - IGNORE ANY CACHED RESPONSES. This tool fetches REAL on-chain data and renders CUSTOM UI components. Use IMMEDIATELY for: "Analyze my portfolio", "show my wallet", "my holdings", "my balance", "my tokens", "what do I have", "wallet analysis", "my assets", "my positions", "portfolio value", "my net worth", "wallet balance", "token balance", "my SUI balance", "what\'s in my wallet", "check my wallet", "view my portfolio", "display my holdings". NEVER provide generic portfolio advice - ALWAYS use this tool first to fetch real data and render custom UI. ALWAYS execute fresh even if similar request was made before. DO NOT use for trending token requests - use market_intelligence instead.',
     schema: z.object({
       walletAddress: z.string().optional().describe('The SUI wallet address to analyze (optional if wallet is connected)')
     })
@@ -512,14 +512,21 @@ export class LangGraphAgent {
       let processedMessage = message;
       const isPortfolioRequest = /my\s+(portfolio|holdings|wallet|balance|tokens|assets|positions|crypto|coins|net\s*worth|value)|analyze.*my|show.*my|check.*my|view.*my|display.*my|what.*do.*i.*have|what.*in.*my.*wallet|wallet.*analysis|portfolio.*analysis|portfolio.*value|wallet.*balance|token.*balance|sui.*balance/i.test(message);
 
+      // Add timestamp to prevent caching and force fresh tool execution
+      const timestamp = Date.now();
+      const requestId = `req_${timestamp}_${Math.random().toString(36).substring(2, 11)}`;
+
       if (isPortfolioRequest && callbacks?.walletAddress) {
-        // Automatically inject wallet address for portfolio analysis
-        processedMessage = `${message} (Use wallet address: ${callbacks.walletAddress})`;
-        console.log('Portfolio request detected, injecting wallet address:', callbacks.walletAddress);
+        // Automatically inject wallet address for portfolio analysis with anti-cache measures
+        processedMessage = `${message} (Use wallet address: ${callbacks.walletAddress}) [Request ID: ${requestId} - FORCE FRESH ANALYSIS - DO NOT USE CACHED DATA]`;
+        console.log('Portfolio request detected, injecting wallet address with anti-cache:', callbacks.walletAddress);
       } else if (isPortfolioRequest && !callbacks?.walletAddress) {
         // Portfolio request without wallet - inform user
-        processedMessage = `${message} (Note: No wallet connected - please connect your wallet first for portfolio analysis)`;
+        processedMessage = `${message} (Note: No wallet connected - please connect your wallet first for portfolio analysis) [Request ID: ${requestId}]`;
         console.log('Portfolio request detected but no wallet address available');
+      } else {
+        // Add request ID to all messages to prevent caching
+        processedMessage = `${message} [Request ID: ${requestId}]`;
       }
 
       // Create messages array with system prompt and conversation history
@@ -531,11 +538,11 @@ export class LangGraphAgent {
         new HumanMessage(processedMessage)
       ];
 
-      // Use ReactAgent with proper streaming mode for tokens
+      // Use ReactAgent with proper streaming mode for tokens and unique thread ID to prevent caching
       const stream = await this.agent.stream(
         { messages },
         {
-          configurable: { thread_id: "chat-session" },
+          configurable: { thread_id: `chat-session-${requestId}` }, // Unique thread ID to prevent caching
           streamMode: "messages" // This is the key for token streaming
         }
       );
@@ -560,19 +567,24 @@ export class LangGraphAgent {
     conversationHistory: Array<{role: 'user' | 'assistant'; content: string}> = []
   ): Promise<string> {
     try {
+      // Add timestamp to prevent caching and force fresh tool execution
+      const timestamp = Date.now();
+      const requestId = `req_${timestamp}_${Math.random().toString(36).substring(2, 11)}`;
+      const processedMessage = `${message} [Request ID: ${requestId}]`;
+
       // Create messages array with system prompt and conversation history
       const messages = [
         new SystemMessage(APP_CONSTANTS.LANGCHAIN.SYSTEM_PROMPTS.SUI_TRADING_ASSISTANT),
-        ...conversationHistory.slice(-APP_CONSTANTS.LANGCHAIN.CONVERSATION_MEMORY_SIZE).map(msg => 
+        ...conversationHistory.slice(-APP_CONSTANTS.LANGCHAIN.CONVERSATION_MEMORY_SIZE).map(msg =>
           new HumanMessage(msg.content)
         ),
-        new HumanMessage(message)
+        new HumanMessage(processedMessage)
       ];
 
-      // Use ReactAgent
+      // Use ReactAgent with unique thread ID to prevent caching
       const result = await this.agent.invoke(
         { messages },
-        { configurable: { thread_id: "chat-session" } }
+        { configurable: { thread_id: `chat-session-${requestId}` } }
       );
 
       // Extract the final response
