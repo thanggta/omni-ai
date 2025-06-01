@@ -193,26 +193,44 @@ export function AlertSystem() {
 
   return (
     <>
-      {/* #TODO-24.6: Alert button - only show when there are unread alerts or for manual fetch */}
-      {(alertState.hasUnreadAlerts || alertState.alerts.length > 0) && (
-        <div className="fixed top-5 right-40 z-50">
-          <div className="flex gap-2">
-            {/* Unread alerts button */}
-            {alertState.hasUnreadAlerts && (
-              <Button
-                onClick={handleShowAlerts}
-                className="relative bg-gradient-to-r from-[#FF3333] to-[#FF69B4] hover:from-[#FF69B4] hover:to-[#FF00FF] text-white font-semibold transition-all duration-300 shadow-[0_0_20px_rgba(255,51,51,0.6)] hover:shadow-[0_0_30px_rgba(255,0,255,0.8)] border-0 animate-pulse"
-                size="lg"
-              >
-                <BellRing className="w-5 h-5 mr-2" />
-                {alertState.unreadAlerts.size} Alert{alertState.unreadAlerts.size > 1 ? 's' : ''}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#39FF14] rounded-full animate-ping"></div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#39FF14] rounded-full"></div>
-              </Button>
+      {/* #TODO-24.6: Alert buttons - positioned below wallet button to avoid overlap */}
+      <div className="fixed top-16 right-6 z-50">
+        <div className="flex flex-col gap-2">
+          {/* Unread alerts button - only show when there are unread alerts */}
+          {alertState.hasUnreadAlerts && (
+            <Button
+              onClick={handleShowAlerts}
+              className="relative bg-gradient-to-r from-[#FF3333] to-[#FF69B4] hover:from-[#FF69B4] hover:to-[#FF00FF] text-white font-semibold transition-all duration-300 shadow-[0_0_20px_rgba(255,51,51,0.6)] hover:shadow-[0_0_30px_rgba(255,0,255,0.8)] border-0 animate-pulse"
+              size="sm"
+            >
+              <BellRing className="w-4 h-4 mr-2" />
+              {alertState.unreadAlerts.size} Alert{alertState.unreadAlerts.size > 1 ? 's' : ''}
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#39FF14] rounded-full animate-ping"></div>
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#39FF14] rounded-full"></div>
+            </Button>
+          )}
+
+          {/* Manual fetch button - always available */}
+          <Button
+            onClick={handleAlertButtonClick}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-[#00FFFF] to-[#00BFFF] hover:from-[#00BFFF] hover:to-[#FF00FF] text-black font-semibold transition-all duration-300 shadow-[0_0_20px_rgba(0,255,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] border-0 disabled:opacity-50"
+            size="sm"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 mr-2 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                Checking...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4 mr-2" />
+                Check Alerts
+              </>
             )}
-          </div>
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* #TODO-24.7: Alert modal with cyberpunk styling */}
       <Dialog open={alertState.showModal} onOpenChange={handleCloseModal}>
