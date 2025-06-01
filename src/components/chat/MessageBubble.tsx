@@ -3,7 +3,6 @@
 'use client';
 
 import React from 'react';
-import { Card } from "@/components/ui/card";
 import { ChatMessage } from '@/src/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,6 +10,7 @@ import { CitationLink } from './CitationLink';
 import { cleanMessageContent } from '@/src/lib/utils/swap-action-parser';
 import { cleanPortfolioMessageContent, extractPortfolioUIData } from '@/src/lib/utils/portfolio-action-parser';
 import { PortfolioUI } from '@/src/components/portfolio/PortfolioUI';
+import { AnimatedMessageWrapper, removeAnimationClasses } from './AnimatedMessageWrapper';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -27,6 +27,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     displayContent = cleanPortfolioMessageContent(displayContent);
   }
 
+  // Check if content contains HTML (for enhanced swap messages)
+  const isHTMLContent = displayContent.includes('<div class="animate-');
+
+  // Extract animation class from HTML content for wrapper
+  let animationClass = '';
+  if (isHTMLContent) {
+    const slideInLeftMatch = displayContent.match(/animate-slide-in-left/);
+    const slideInRightMatch = displayContent.match(/animate-slide-in-right/);
+
+    if (slideInLeftMatch) animationClass = 'animate-slide-in-left';
+    else if (slideInRightMatch) animationClass = 'animate-slide-in-right';
+
+    // Remove animation classes from HTML content since wrapper will handle them
+    displayContent = removeAnimationClasses(displayContent);
+  }
+
   // If this message contains portfolio UI data, render only the portfolio component
   if (portfolioUIData) {
     return (
@@ -38,119 +54,148 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
-  return (
-    <div
-      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-    >
-      <Card className={`max-w-[80%] p-4 ${
-        message.role === 'user'
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-muted'
-      }`}>
-        <div className="space-y-2">
-          {/* Render message content with markdown support */}
-          <div className="text-sm">
-            {message.role === 'assistant' ? (
-              <div className="chat-markdown">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    // Custom styling for markdown elements
-                    h1: ({ children }) => <h1 className="text-lg font-bold mb-2 first:mt-0">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-base font-bold mb-2 first:mt-0">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-sm font-bold mb-1 first:mt-0">{children}</h3>,
-                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                    strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
-                    ul: ({ children }) => <ul className="list-disc mb-2 space-y-1 pl-6">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal mb-2 space-y-1 pl-6">{children}</ol>,
-                    li: ({ children }) => <li className="text-sm ml-0 pl-1">{children}</li>,
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-2 text-muted-foreground">
-                        {children}
-                      </blockquote>
-                    ),
-                    a: ({ href, children }) => {
-                      // Check if this is a citation link (Twitter/X.com links)
-                      const isCitation = href && (
-                        href.includes('x.com') ||
-                        href.includes('twitter.com') ||
-                        href.includes('status/')
-                      );
+  const messageContent = (
+    <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {message.role === 'user' ? (
+        // User Message - Purple/Magenta theme
+        <div className="flex-1 max-w-3xl">
+          <div className="bg-gradient-to-r from-darker-gray/80 to-darker-gray/60 backdrop-blur-sm p-5 rounded-2xl border border-vivid-purple/30 shadow-lg relative overflow-hidden group ml-auto">
+            {/* Glow Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-vivid-purple/5 to-magenta/5 opacity-70"></div>
+            <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-vivid-purple to-magenta"></div>
+            <div className="absolute -top-10 -right-10 w-20 h-20 bg-vivid-purple opacity-10 rounded-full blur-xl"></div>
 
-                      if (isCitation) {
-                        return (
-                          <CitationLink href={href || '#'}>
-                            {children}
-                          </CitationLink>
-                        );
-                      }
-
-                      // Regular link
-                      return (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          {children}
-                        </a>
-                      );
-                    },
-                    table: ({ children }) => (
-                      <div className="overflow-x-auto my-2">
-                        <table className="min-w-full border-collapse border border-border text-xs">
-                          {children}
-                        </table>
-                      </div>
-                    ),
-                    th: ({ children }) => (
-                      <th className="border border-border px-2 py-1 bg-muted font-semibold text-left">
-                        {children}
-                      </th>
-                    ),
-                    td: ({ children }) => (
-                      <td className="border border-border px-2 py-1">
-                        {children}
-                      </td>
-                    ),
-                    hr: () => <hr className="border-border my-3" />,
-                  }}
-                >
-                  {displayContent}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              // User messages don't need markdown rendering
-              <p className="leading-relaxed">{message.content}</p>
-            )}
+            {/* Message Content */}
+            <p className="text-gray-100 relative z-10 leading-relaxed">{message.content}</p>
           </div>
+        </div>
+      ) : (
+        // AI Message - Cyan/Blue theme
+        <div className="flex-1">
+          {isHTMLContent ? (
+            // Render enhanced HTML content directly (already styled)
+            <div
+              className="chat-html"
+              dangerouslySetInnerHTML={{ __html: displayContent }}
+            />
+          ) : (
+            // Render normal AI message with default styling
+            <div className="bg-gradient-to-r from-darker-gray/90 to-darker-gray/70 backdrop-blur-sm p-5 rounded-2xl border border-electric-cyan/30 shadow-lg relative overflow-hidden group">
+              {/* Glow Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-electric-cyan/5 to-neon-blue/5 opacity-70"></div>
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-electric-cyan to-neon-blue"></div>
+              <div className="absolute -top-10 -left-10 w-20 h-20 bg-electric-cyan opacity-10 rounded-full blur-xl"></div>
 
-          {/* Citations section for assistant messages */}
-          {/* {citations.length > 0 && (
-            <div className="mt-3 pt-2 border-t border-border/30">
-              <p className="text-xs text-muted-foreground mb-2">Sources:</p>
-              <div className="flex flex-wrap gap-1">
-                {citations.map((citation, index) => (
-                  <CitationLink
-                    key={index}
-                    href={citation.url}
-                    index={index + 1}
+              {/* Message Header */}
+              <div className="flex items-center mb-2">
+                <div className="h-2 w-2 rounded-full bg-electric-cyan mr-2 animate-pulse"></div>
+                <span className="text-electric-cyan font-bold text-sm tracking-wide">OMNI AI</span>
+              </div>
+
+              {/* Message Content */}
+              <div className="text-sm relative z-10">
+                <div className="chat-markdown">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Custom styling for markdown elements with cyberpunk theme
+                      h1: ({ children }) => <h1 className="text-lg font-bold mb-2 first:mt-0 text-electric-cyan">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-base font-bold mb-2 first:mt-0 text-electric-cyan">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-bold mb-1 first:mt-0 text-electric-cyan">{children}</h3>,
+                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-gray-100">{children}</p>,
+                      strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                      em: ({ children }) => <em className="italic text-gray-200">{children}</em>,
+                      ul: ({ children }) => <ul className="list-disc mb-2 space-y-1 pl-6 text-gray-100">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal mb-2 space-y-1 pl-6 text-gray-100">{children}</ol>,
+                      li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-electric-cyan/50 pl-4 italic my-2 text-gray-200">
+                          {children}
+                        </blockquote>
+                      ),
+                      a: ({ href, children }) => {
+                        // Check if this is a citation link (Twitter/X.com links)
+                        const isCitation = href && (
+                          href.includes('x.com') ||
+                          href.includes('twitter.com') ||
+                          href.includes('status/')
+                        );
+
+                        if (isCitation) {
+                          return (
+                            <CitationLink href={href || '#'}>
+                              {children}
+                            </CitationLink>
+                          );
+                        }
+
+                        // Regular link
+                        return (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-electric-cyan hover:text-neon-blue hover:underline transition-colors duration-200"
+                          >
+                            {children}
+                          </a>
+                        );
+                      },
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto mb-2">
+                          <table className="min-w-full border border-gray-700">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      thead: ({ children }) => (
+                        <thead className="bg-darker-gray">
+                          {children}
+                        </thead>
+                      ),
+                      th: ({ children }) => (
+                        <th className="border border-gray-700 px-2 py-1 text-left font-semibold text-electric-cyan">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="border border-gray-700 px-2 py-1 text-gray-100">
+                          {children}
+                        </td>
+                      ),
+                      hr: () => <hr className="border-gray-700 my-3" />,
+                    }}
                   >
-                    {citation.title}
-                  </CitationLink>
-                ))}
+                    {displayContent}
+                  </ReactMarkdown>
+                </div>
+              </div>
+
+              {/* Timestamp for AI messages */}
+              <div className="mt-3 flex justify-start">
+                <p className="text-xs text-gray-500">
+                  {message.timestamp.toLocaleTimeString()}
+                </p>
               </div>
             </div>
-          )} */}
-
-          {/* Timestamp */}
-          <p className="text-xs opacity-70">
-            {message.timestamp.toLocaleTimeString()}
-          </p>
+          )}
         </div>
-      </Card>
+      )}
     </div>
   );
+
+  // Wrap with animation wrapper if needed
+  if (animationClass) {
+    return (
+      <AnimatedMessageWrapper
+        messageId={message.id}
+        animationClass={animationClass}
+        animationDuration={500}
+      >
+        {messageContent}
+      </AnimatedMessageWrapper>
+    );
+  }
+
+  return messageContent;
 }

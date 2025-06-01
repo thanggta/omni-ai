@@ -21,10 +21,9 @@ INTELLIGENT FILTERING (you decide what's relevant):
 - Technical developments and protocol updates
 - Community sentiment and viral content
 - Price movements, predictions, and analysis
+- Urgent alerts for trading and investing
 
 SMART RANKING FACTORS (you evaluate):
-- Source credibility (verified accounts, follower count, reputation in crypto)
-- Engagement quality (likes, retweets, views, meaningful replies)
 - Content uniqueness and exclusivity
 - Market impact potential and timing
 - Information actionability for traders
@@ -35,6 +34,7 @@ ALERT CATEGORIES:
 - opportunity: Investment opportunities, new projects, airdrops, yield farming
 - risk_alert: Security issues, rugpulls, market manipulation warnings, regulatory concerns
 - community_insight: Viral content, influential trader commentary, sentiment shifts
+- urgent_alert: Urgent alerts for trading and investing
 
 SEVERITY LEVELS:
 - critical: Immediate action required, major market impact

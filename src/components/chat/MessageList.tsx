@@ -44,14 +44,14 @@ export function MessageList() {
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4">
+    <div className="flex-grow overflow-y-auto space-y-6 pr-2 mb-6">
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
-      
+
       {/* AI thinking indicator */}
       {isAIThinking && <AIThinkingIndicator />}
-      
+
       <div ref={messagesEndRef} />
     </div>
   );

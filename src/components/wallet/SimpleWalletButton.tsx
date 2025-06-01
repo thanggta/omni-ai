@@ -72,25 +72,17 @@ export function SimpleWalletButton() {
     }
   };
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  // Connected state - show address and disconnect button (no balance)
+  // Connected state - show disconnect button only (no address display)
   if (walletState.isConnected && walletState.address) {
     return (
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">
-          {formatAddress(walletState.address)}
-        </span>
+      <div className="flex flex-col items-end gap-1">
         <Button
-          variant="outline"
-          size="sm"
           onClick={handleDisconnect}
-          className="flex items-center gap-2"
+          className="px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 relative overflow-hidden group bg-gradient-to-r from-electric-cyan to-neon-blue text-black hover:opacity-90"
+          size="sm"
         >
           <LogOut className="h-4 w-4" />
-          Disconnect
+          <span className="relative z-10 font-medium">Disconnect</span>
         </Button>
       </div>
     );
@@ -131,13 +123,15 @@ export function SimpleWalletButton() {
       <Button
         onClick={handleConnectClick}
         disabled={walletState.isConnecting}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+        className="px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 relative overflow-hidden group bg-gradient-to-r from-electric-cyan to-neon-blue text-black hover:opacity-90"
         size="sm"
       >
         <Wallet className="h-4 w-4" />
-        {walletState.isConnecting ? 'Connecting...' : 'Connect Wallet'}
+        <span className="relative z-10 font-medium">
+          {walletState.isConnecting ? 'Connecting...' : 'Connect Wallet'}
+        </span>
       </Button>
-      
+
       {walletState.error && (
         <p className="text-xs text-destructive text-right max-w-48">
           {walletState.error}

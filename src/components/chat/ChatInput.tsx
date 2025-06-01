@@ -151,31 +151,35 @@ export function ChatInput() {
   };
 
   return (
-    <div className="border-t">
+    <div>
       {/* Prompt Templates - Fixed list above input */}
       <PromptTemplates onExecutePrompt={handlePromptExecute} />
 
-      <div className="p-4">
-        {/* Chat input area */}
-        <div className="flex space-x-2">
-          <Input
-            value={currentInput}
-            onChange={(e) => setCurrentInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              walletState.isConnected
-                ? "Ask about SUI market sentiment, trends, portfolio analysis, or trading insights..."
-                : "Ask about SUI market sentiment, trends, or trading insights (connect wallet for portfolio analysis)..."
-            }
-            disabled={isAIThinking}
-            className="flex-1"
-          />
-          <Button
-            onClick={handleButtonClick}
-            disabled={!currentInput.trim() || isAIThinking}
-          >
-            Send
-          </Button>
+      {/* Input Area */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-electric-cyan/20 to-vivid-purple/20 blur-xl opacity-30 rounded-xl"></div>
+        <div className="relative bg-gradient-to-r from-darker-gray/90 to-darker-gray/80 backdrop-blur-sm rounded-xl border border-gray-700 p-4 hover:border-gray-600 focus-within:border-electric-cyan/50 transition-colors duration-300">
+          <div className="flex space-x-3">
+            <Input
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                walletState.isConnected
+                  ? "Ask anything about SUI blockchain..."
+                  : "Ask anything about SUI blockchain (connect wallet for portfolio analysis)..."
+              }
+              disabled={isAIThinking}
+              className="flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus-visible:border-transparent text-gray-100 placeholder-gray-500 resize-none outline-none"
+            />
+            <Button
+              onClick={handleButtonClick}
+              disabled={!currentInput.trim() || isAIThinking}
+              className="px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center relative overflow-hidden group bg-gradient-to-r from-electric-cyan to-neon-blue text-black hover:opacity-90"
+            >
+              <span className="relative z-10 font-medium">Send</span>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

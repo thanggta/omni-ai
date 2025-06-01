@@ -41,6 +41,16 @@ export const updateMessageAtom = atom(
   }
 )
 
+// #TODO-6: Derived atom for removing a specific message
+export const removeMessageAtom = atom(
+  null,
+  (get, set, messageId: string) => {
+    const currentMessages = get(chatMessagesAtom)
+    const filteredMessages = currentMessages.filter(msg => msg.id !== messageId)
+    set(chatMessagesAtom, filteredMessages)
+  }
+)
+
 // #TODO-6: Derived atom for clearing chat
 export const clearChatAtom = atom(
   null,

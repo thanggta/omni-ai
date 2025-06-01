@@ -7,15 +7,15 @@ export default function Home() {
   // TODO: Focus on core chat functionality:
   // - Full-screen chat interface
   // - No navigation or header
-  // - Simple, clean design
+  // - Cyberpunk/neon design inspired by demo.html
   // - Focus on AI interaction for first 3 features:
   //   1. Twitter sentiment analysis
   //   2. Market intelligence
   //   3. Chat-based insights
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* #TODO-6.2: Full-screen chat interface */}
+    <div className="cyberpunk-bg">
+      {/* #TODO-6.2: Full-screen chat interface with cyberpunk styling */}
       <ChatInterface />
     </div>
   );
